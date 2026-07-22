@@ -1,7 +1,9 @@
 import multiprocessing
 import whisperx
 import torch
+from whisperx.utils import get_writer
 from .config import get_settings
+from .logger import get_logger
 
 
 settings = get_settings()
@@ -15,7 +17,7 @@ def get_compute_type():
     return "float16" if torch.cuda.is_available() else "int8"
 
 
-def get_transcription_model(device, compute_type):
+def get_transcription_model():
     return whisperx.load_model(
         settings.model_name,
         device=get_device(),
@@ -25,7 +27,7 @@ def get_transcription_model(device, compute_type):
     )
 
 
-def get_align_model(language_code: str, device):
+def get_align_model(language_code: str):
     return whisperx.load_align_model(
         language_code=language_code,
         device=get_device(),
@@ -54,7 +56,31 @@ def get_output_dir():
 
 
 def handle_transcription():
-    pass
+    logger = get_logger("Transcription")
+
+    logger.info("transcription process start")
+
+    waiting_audio = get_waiting_audio()
+    if waiting_audio is None:
+        logger.info("waiting audio is empty")
+        return
+
+    logger.info("load transcription model")
+    model = get_transcription_model()
+    logger.info("transcription model loaded")
+
+    logger.info("load audio")
+    audio = whisperx.load_audio(waiting_audio)
+    logger.info("audio loaded")
+
+    logger.info("transcribe audio")
+    result = model.transcribe(audio, batch_size=16)
+    logger.info("audio transcribed")
+
+    logger.info("output result")
+    writer = get_writer("json", str(get_output_dir()))
+    writer(result, str(waiting_audio), {})
+    logger.info("result written")
 
 
 def handle_alignment():
