@@ -1,3 +1,4 @@
+import multiprocessing
 import whisperx
 import torch
 from .config import get_settings
@@ -31,3 +32,70 @@ def get_align_model(language_code: str, device):
         model_dir=str(settings.model_download_dir) if settings.model_download_dir else None,
         model_cache_only=bool(settings.model_download_dir),
     )
+
+
+def get_waiting_dir():
+    settings.waiting_dir.mkdir(parents=True, exist_ok=True)
+    return settings.waiting_dir
+
+
+def get_waiting_audio():
+    waiting_audio = (path for path in get_waiting_dir().iterdir() if path.is_file())
+    return min(
+        waiting_audio,
+        key=lambda path: (path.stat().st_ctime_ns, path.name),
+        default=None,
+    )
+
+
+def get_output_dir():
+    settings.output_dir.mkdir(parents=True, exist_ok=True)
+    return settings.output_dir
+
+
+def handle_transcription():
+    pass
+
+
+def handle_alignment():
+    pass
+
+
+def run_process(ctx, target, name):
+    process = ctx.Process(target=target, name=name)
+
+    try:
+        process.start()
+        process.join()
+
+        if process.exitcode != 0:
+            raise RuntimeError(
+                f"{name} exit failed，exitcode={process.exitcode}"
+            )
+    finally:
+        if process.is_alive():
+            process.terminate()
+            process.join()
+
+        process.close()
+
+
+def main():
+    mp_ctx = multiprocessing.get_context("spawn")
+
+    run_process(
+        mp_ctx,
+        handle_transcription,
+        "Transcription",
+    )
+
+    run_process(
+        mp_ctx,
+        handle_alignment,
+        "Alignment",
+    )
+
+
+
+if __name__ == "__main__":
+    main()
