@@ -1,4 +1,6 @@
 import multiprocessing
+from tempfile import TemporaryDirectory
+
 import whisperx
 import torch
 from whisperx.utils import get_writer
@@ -55,7 +57,7 @@ def get_output_dir():
     return settings.output_dir
 
 
-def handle_transcription():
+def handle_transcription(temp_dir: str):
     logger = get_logger("Transcription")
 
     logger.info("transcription process start")
@@ -77,18 +79,18 @@ def handle_transcription():
     result = model.transcribe(audio, batch_size=16)
     logger.info("audio transcribed")
 
-    logger.info("output result")
-    writer = get_writer("json", str(get_output_dir()))
+    logger.info("write result")
+    writer = get_writer("json", temp_dir)
     writer(result, str(waiting_audio), {})
     logger.info("result written")
 
 
-def handle_alignment():
+def handle_alignment(temp_dir: str):
     pass
 
 
-def run_process(ctx, target, name):
-    process = ctx.Process(target=target, name=name)
+def run_process(ctx, target, name, args=()):
+    process = ctx.Process(target=target, name=name, args=args)
 
     try:
         process.start()
@@ -109,17 +111,20 @@ def run_process(ctx, target, name):
 def main():
     mp_ctx = multiprocessing.get_context("spawn")
 
-    run_process(
-        mp_ctx,
-        handle_transcription,
-        "Transcription",
-    )
+    with TemporaryDirectory(prefix=f"{settings.app_name}-") as temp_dir:
+        run_process(
+            mp_ctx,
+            handle_transcription,
+            "Transcription",
+            args=(temp_dir)
+        )
 
-    run_process(
-        mp_ctx,
-        handle_alignment,
-        "Alignment",
-    )
+        run_process(
+            mp_ctx,
+            handle_alignment,
+            "Alignment",
+            args=(temp_dir)
+        )
 
 
 
