@@ -7,8 +7,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from config import get_settings
 from routers.common import router as health_router
 from routers.session import router as session_router
+from routers.task import router as task_router
 from routers.upload import router as upload_router
 from sessions.manager import SessionManager
+from tasks.manager import TaskManager
 
 def create_app() -> FastAPI:
     settings = get_settings()
@@ -18,10 +20,15 @@ def create_app() -> FastAPI:
         session_manager = SessionManager(
             settings=settings,
         )
+        task_manager = TaskManager(
+            settings=settings,
+        )
         await session_manager.start()
-        app.state.session_manager = session_manager
-        app.state.settings = settings
         try:
+            await task_manager.start()
+            app.state.session_manager = session_manager
+            app.state.task_manager = task_manager
+            app.state.settings = settings
             yield
         finally:
             await session_manager.close()
@@ -41,6 +48,7 @@ def create_app() -> FastAPI:
 
     app.include_router(health_router)
     app.include_router(session_router)
+    app.include_router(task_router)
     app.include_router(upload_router)
     app.mount("/", StaticFiles(directory=Path(__file__).resolve().parent / "static", html=True))
 
