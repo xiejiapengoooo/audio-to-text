@@ -5,10 +5,12 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    space_id: str | None = os.getenv("SPACE_ID")
     app_name: str = "audio-to-text"
-    model_name: str = "large-v3"
+
+    space_id: str | None = os.getenv("SPACE_ID")
+
     model_download_dir: Path | None = None
+
     data_dir: Path | None = Path("/data") if space_id else Path.home() / f".{app_name}"
     waiting_dir: Path = data_dir / 'waiting'
     output_dir: Path = data_dir / 'output'
