@@ -18,9 +18,13 @@ def create_app() -> FastAPI:
         manager = SessionManager(
             settings=settings,
         )
+        await manager.start()
         app.state.session_manager = manager
         app.state.settings = settings
-        yield
+        try:
+            yield
+        finally:
+            await manager.close()
 
     app = FastAPI(
         title=settings.app_name,
