@@ -6,6 +6,9 @@ import os
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 import uuid
+
+from anyio import to_thread
+
 from config import Settings
 from logger import get_logger
 from .session import Session
@@ -30,7 +33,7 @@ class SessionManager:
                 return
 
             self._load()
-            self._remove_expired_and_save()
+            await self._remove_expired()
 
             self._cleanup_task = asyncio.create_task(
                 self._cleanup_expired(),
@@ -56,7 +59,7 @@ class SessionManager:
             session = Session(session_id=session_id)
             self._sessions[session.session_id] = session
             try:
-                self._save()
+                await self._save()
             except Exception:
                 self._sessions.pop(session.session_id, None)
                 raise
@@ -75,7 +78,7 @@ class SessionManager:
             if session.is_expired(now):
                 self._sessions.pop(session_id)
                 try:
-                    self._save()
+                    await self._save()
                 except Exception:
                     self._sessions[session_id] = session
                     raise
@@ -85,7 +88,7 @@ class SessionManager:
             previous_expiration = session.expires_at
             session.renew(now)
             try:
-                self._save()
+                await self._save()
             except Exception:
                 session.expires_at = previous_expiration
                 raise
@@ -98,7 +101,7 @@ class SessionManager:
             session = self._sessions.pop(session_id, None)
             if session is not None:
                 try:
-                    self._save()
+                    await self._save()
                 except Exception:
                     self._sessions[session_id] = session
                     raise
@@ -124,7 +127,10 @@ class SessionManager:
 
         self._sessions = sessions
 
-    def _save(self) -> None:
+    async def _save(self) -> None:
+        await to_thread.run_sync(self._save_sync)
+
+    def _save_sync(self) -> None:
         self._sessions_file_path.parent.mkdir(parents=True, exist_ok=True)
         temporary_path: Path | None = None
         data = {
@@ -157,7 +163,7 @@ class SessionManager:
             if temporary_path is not None:
                 temporary_path.unlink(missing_ok=True)
 
-    def _remove_expired_and_save(self) -> None:
+    async def _remove_expired(self) -> None:
         now = datetime.now(timezone.utc)
         expired_sessions = {
             session_id: session
@@ -171,7 +177,7 @@ class SessionManager:
             self._sessions.pop(session_id)
 
         try:
-            self._save()
+            await self._save()
         except Exception:
             self._sessions.update(expired_sessions)
             raise
@@ -200,7 +206,7 @@ class SessionManager:
             except TimeoutError:
                 try:
                     async with self._lock:
-                        self._remove_expired_and_save()
+                        await self._remove_expired()
                 except Exception:
                     self._logger.exception("Failed to clean up expired sessions")
                     await asyncio.sleep(1)
