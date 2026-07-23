@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from config import get_settings
-from routers.health import router as health_router
+from routers.common import router as health_router
 from routers.session import router as session_router
 from routers.upload import router as upload_router
 from sessions.manager import SessionManager

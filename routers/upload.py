@@ -1,16 +1,16 @@
 import anyio
 from pathlib import Path
 from tempfile import NamedTemporaryFile
-from fastapi import APIRouter, File, HTTPException, Request, UploadFile
+from fastapi import APIRouter, File, Header, HTTPException, Request, UploadFile
 
 
 router = APIRouter(prefix="/upload")
 
 
-@router.post("/{session_id}")
+@router.post("")
 async def upload_audio(
-    session_id: str,
     request: Request,
+    session_id: str = Header(..., alias="session"),
     file: UploadFile = File(...),
 ) -> str:
     temporary_path: Path | None = None
