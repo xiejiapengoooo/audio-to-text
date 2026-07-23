@@ -50,19 +50,39 @@ class SessionManager:
         with suppress(asyncio.CancelledError):
             await task
 
-    async def create(self) -> Session:
+    async def create(self, session_id: str | None = None) -> Session:
         async with self._lock:
-            session_id = str(uuid.uuid4())
-            while session_id in self._sessions:
-                session_id = str(uuid.uuid4())
+            now = datetime.now(timezone.utc)
+            existing_session = (
+                self._sessions.get(session_id) if session_id is not None else None
+            )
+            if existing_session is not None and not existing_session.is_expired(now):
+                previous_expiration = existing_session.expires_at
+                existing_session.renew(now)
+                try:
+                    await self._save()
+                except Exception:
+                    existing_session.expires_at = previous_expiration
+                    raise
 
-            session = Session(session_id=session_id)
-            self._sessions[session.session_id] = session
-            try:
-                await self._save()
-            except Exception:
-                self._sessions.pop(session.session_id, None)
-                raise
+                session = existing_session
+            else:
+                if existing_session is not None:
+                    self._sessions.pop(existing_session.session_id)
+
+                new_session_id = str(uuid.uuid4())
+                while new_session_id in self._sessions:
+                    new_session_id = str(uuid.uuid4())
+
+                session = Session(session_id=new_session_id)
+                self._sessions[session.session_id] = session
+                try:
+                    await self._save()
+                except Exception:
+                    self._sessions.pop(session.session_id, None)
+                    if existing_session is not None:
+                        self._sessions[existing_session.session_id] = existing_session
+                    raise
 
         self._cleanup_event.set()
 
@@ -85,16 +105,7 @@ class SessionManager:
                 self._cleanup_event.set()
                 return None
 
-            previous_expiration = session.expires_at
-            session.renew(now)
-            try:
-                await self._save()
-            except Exception:
-                session.expires_at = previous_expiration
-                raise
-
-        self._cleanup_event.set()
-        return session
+            return session
 
     async def remove(self, session_id: str) -> Session | None:
         async with self._lock:
