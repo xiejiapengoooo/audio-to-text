@@ -53,13 +53,6 @@ class TaskManager:
     async def get_next(self) -> Task:
         async with self._condition:
             await self._condition.wait_for(lambda: bool(self._tasks))
-            return self._tasks[0]
-
-    async def complete(self, task_id: str) -> Task | None:
-        async with self._condition:
-            if not self._tasks or self._tasks[0].task_id != task_id:
-                return None
-
             task = self._tasks.popleft()
             try:
                 await self._save()
