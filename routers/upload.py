@@ -25,6 +25,25 @@ async def upload_audio(
         if not filename:
             raise HTTPException(status_code=400, detail="Filename is required")
 
+        suffix = Path(filename).suffix.lower()
+        content_type = (file.content_type or "").lower()
+        if (
+            suffix not in {
+                ".aac",
+                ".flac",
+                ".m4a",
+                ".mp3",
+                ".ogg",
+                ".opus",
+                ".wav",
+            }
+            or not content_type.startswith("audio/")
+        ):
+            raise HTTPException(
+                status_code=415,
+                detail="Only audio files are supported",
+            )
+
         waiting_dir = request.app.state.settings.waiting_dir
         uploading_dir = waiting_dir / ".uploading"
         uploading_dir.mkdir(parents=True, exist_ok=True)
