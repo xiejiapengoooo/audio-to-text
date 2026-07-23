@@ -66,7 +66,10 @@ async def create_task(
 
         task_manager = request.app.state.task_manager
         try:
-            task = await task_manager.create(stored_filename)
+            task = await task_manager.create(
+                stored_filename,
+                session.session_id,
+            )
         except Exception:
             audio_path.unlink(missing_ok=True)
             raise

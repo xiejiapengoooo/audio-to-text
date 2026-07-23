@@ -1,14 +1,21 @@
 from __future__ import annotations
 
 class Task:
-    def __init__(self, task_id: str, filename: str):
+    def __init__(
+        self,
+        task_id: str,
+        filename: str,
+        session_id: str,
+    ):
         self.task_id = task_id
         self.filename = filename
+        self.session_id = session_id
 
     def to_dict(self) -> dict[str, str]:
         return {
             "task_id": self.task_id,
             "filename": self.filename,
+            "session_id": self.session_id
         }
 
     @classmethod
@@ -18,14 +25,18 @@ class Task:
 
         task_id = data.get("task_id")
         filename = data.get("filename")
+        session_id = data.get("session_id")
         if filename is None:
             filename = data.get("audio_filename")
         if not isinstance(task_id, str) or not task_id:
             raise ValueError("Task id must be a non-empty string")
         if not isinstance(filename, str) or not filename:
             raise ValueError("Task filename must be a non-empty string")
+        if not isinstance(session_id, str) or not session_id:
+            raise ValueError("Task session_id must be a non-empty string")
 
         return cls(
             task_id=task_id,
             filename=filename,
+            session_id=session_id,
         )
