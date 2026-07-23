@@ -111,3 +111,6 @@ class WhisperXProvider(BaseProvider):
               "Alignment",
               args=(temp_dir, waiting_audio),
           )
+
+      waiting_audio.unlink(missing_ok=True)
+      self._logger.info("waiting audio removed")
