@@ -1,4 +1,6 @@
+import json
 import multiprocessing
+from pathlib import Path
 from tempfile import TemporaryDirectory
 
 import whisperx
@@ -57,15 +59,10 @@ def get_output_dir():
     return settings.output_dir
 
 
-def handle_transcription(temp_dir: str):
+def handle_transcription(temp_dir: Path, waiting_audio: Path):
     logger = get_logger("Transcription")
 
     logger.info("transcription process start")
-
-    waiting_audio = get_waiting_audio()
-    if waiting_audio is None:
-        logger.info("waiting audio is empty")
-        return
 
     logger.info("load transcription model")
     model = get_transcription_model()
@@ -80,13 +77,49 @@ def handle_transcription(temp_dir: str):
     logger.info("audio transcribed")
 
     logger.info("write result")
-    writer = get_writer("json", temp_dir)
+    writer = get_writer("json", str(temp_dir))
     writer(result, str(waiting_audio), {})
     logger.info("result written")
 
 
-def handle_alignment(temp_dir: str):
-    pass
+def handle_alignment(temp_dir: Path, waiting_audio: Path):
+    logger = get_logger("Alignment")
+
+    logger.info("alignment process start")
+
+    logger.info("load transcription result")
+    transcription_path = temp_dir / f"{waiting_audio.stem}.json"
+    with transcription_path.open(encoding="utf-8") as file:
+        result = json.load(file)
+    logger.info("transcription result loaded")
+
+    language = result["language"]
+    if result["segments"]:
+        logger.info("load alignment model")
+        model, metadata = get_align_model(language)
+        logger.info("alignment model loaded")
+
+        logger.info("load audio")
+        audio = whisperx.load_audio(waiting_audio)
+        logger.info("audio loaded")
+
+        logger.info("align audio")
+        result = whisperx.align(
+            result["segments"],
+            model,
+            metadata,
+            audio,
+            get_device(),
+            return_char_alignments=False,
+        )
+        logger.info("audio aligned")
+
+    result["language"] = language
+
+    logger.info("output result")
+    writer = get_writer("json", str(get_output_dir()))
+    writer(result, str(waiting_audio), {})
+    logger.info("result written")
 
 
 def run_process(ctx, target, name, args=()):
@@ -110,20 +143,26 @@ def run_process(ctx, target, name, args=()):
 
 def main():
     mp_ctx = multiprocessing.get_context("spawn")
+    waiting_audio = get_waiting_audio()
+    if waiting_audio is None:
+        get_logger("Main").info("waiting audio is empty")
+        return
 
     with TemporaryDirectory(prefix=f"{settings.app_name}-") as temp_dir:
+        temp_dir = Path(temp_dir)
+
         run_process(
             mp_ctx,
             handle_transcription,
             "Transcription",
-            args=(temp_dir)
+            args=(temp_dir, waiting_audio),
         )
 
         run_process(
             mp_ctx,
             handle_alignment,
             "Alignment",
-            args=(temp_dir)
+            args=(temp_dir, waiting_audio),
         )
 
 
