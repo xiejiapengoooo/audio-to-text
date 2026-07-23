@@ -22,8 +22,12 @@ class BaseProvider:
             default=None,
         )
 
+    def _get_output_dir(self):
+        self._settings.output_dir.mkdir(parents=True, exist_ok=True)
+        return self._settings.output_dir
+
+    @staticmethod
     def _run_process(
-        self,
         ctx: SpawnContext,
         target: Callable[..., None],
         name: str,
@@ -45,10 +49,6 @@ class BaseProvider:
                 process.join()
 
             process.close()
-
-    def _get_output_dir(self):
-        self._settings.output_dir.mkdir(parents=True, exist_ok=True)
-        return self._settings.output_dir
 
     @staticmethod
     def _get_device():
