@@ -15,7 +15,7 @@ class Settings(BaseSettings):
 
     model_download_dir: Path | None = None
 
-    data_dir: Path | None = Path("/data") if space_id else Path.home() / f".{app_name}"
+    data_dir: Path = Path("/data") if space_id else Path.home() / f".{app_name}"
     waiting_dir: Path = data_dir / 'waiting'
     output_dir: Path = data_dir / 'output'
 
