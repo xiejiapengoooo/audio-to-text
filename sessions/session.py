@@ -1,3 +1,4 @@
+from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 
 
@@ -21,7 +22,7 @@ class Session:
         }
 
     @classmethod
-    def from_dict(cls, data: object) -> "Session":
+    def from_dict(cls, data: object) -> Session:
         if not isinstance(data, dict):
             raise ValueError("Session data must be an object")
 
