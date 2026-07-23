@@ -1,4 +1,5 @@
 import asyncio
+from collections import deque
 from datetime import datetime, timezone
 import json
 import os
@@ -18,45 +19,55 @@ class TaskManager:
     ) -> None:
         self._settings = settings
         self._logger = get_logger("TaskManager")
-        self._tasks: dict[str, Task] = {}
-        self._queue: asyncio.Queue[Task] = asyncio.Queue()
-        self._lock = asyncio.Lock()
-        self._started = False
+        self._tasks: deque[Task] = deque()
+        self._condition = asyncio.Condition()
         self._tasks_file_path = settings.data_dir / "tasks.json"
 
     async def start(self) -> None:
-        async with self._lock:
-            if self._started:
-                return
-
+        async with self._condition:
             self._load()
-            for task in self._tasks.values():
-                self._queue.put_nowait(task)
-            self._started = True
+            if self._tasks:
+                self._condition.notify_all()
 
     async def create(self, filename: str) -> Task:
-        async with self._lock:
+        async with self._condition:
             task_id = str(uuid.uuid4())
-            while task_id in self._tasks:
+            while any(task.task_id == task_id for task in self._tasks):
                 task_id = str(uuid.uuid4())
 
             task = Task(
                 task_id=task_id,
                 filename=filename,
             )
-            self._tasks[task.task_id] = task
+            self._tasks.append(task)
             try:
                 await self._save()
             except Exception:
-                self._tasks.pop(task.task_id, None)
+                self._tasks.pop()
                 raise
 
-            self._queue.put_nowait(task)
+            self._condition.notify()
 
         return task
 
     async def get_next(self) -> Task:
-        return await self._queue.get()
+        async with self._condition:
+            await self._condition.wait_for(lambda: bool(self._tasks))
+            return self._tasks[0]
+
+    async def complete(self, task_id: str) -> Task | None:
+        async with self._condition:
+            if not self._tasks or self._tasks[0].task_id != task_id:
+                return None
+
+            task = self._tasks.popleft()
+            try:
+                await self._save()
+            except Exception:
+                self._tasks.appendleft(task)
+                raise
+
+            return task
 
     def _load(self) -> None:
         if not self._tasks_file_path.exists():
@@ -65,15 +76,21 @@ class TaskManager:
         with self._tasks_file_path.open(encoding="utf-8") as file:
             data = json.load(file)
 
-        if not isinstance(data, dict) or not isinstance(data.get("tasks"), dict):
-            raise ValueError("tasks.json must contain a tasks object")
+        if not isinstance(data, dict):
+            raise ValueError("tasks.json must contain an object")
 
-        tasks = {}
-        for task_id, item in data["tasks"].items():
+        tasks_data = data.get("tasks")
+        if not isinstance(tasks_data, list):
+            raise ValueError("tasks.json must contain a tasks array")
+
+        tasks: deque[Task] = deque()
+        task_ids: set[str] = set()
+        for item in tasks_data:
             task = Task.from_dict(item)
-            if task.task_id != task_id:
-                raise ValueError("Task id must match its tasks key")
-            tasks[task_id] = task
+            if task.task_id in task_ids:
+                raise ValueError("Task ids must be unique")
+            tasks.append(task)
+            task_ids.add(task.task_id)
 
         self._tasks = tasks
 
@@ -85,10 +102,7 @@ class TaskManager:
         temporary_path: Path | None = None
         data = {
             "updatedAt": datetime.now(timezone.utc).isoformat(),
-            "tasks": {
-                task_id: task.to_dict()
-                for task_id, task in self._tasks.items()
-            },
+            "tasks": [task.to_dict() for task in self._tasks],
         }
 
         try:
