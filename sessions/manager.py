@@ -117,13 +117,15 @@ class SessionManager:
         with self._sessions_file_path.open(encoding="utf-8") as file:
             data = json.load(file)
 
-        if not isinstance(data, dict) or not isinstance(data.get("sessions"), list):
-            raise ValueError("sessions.json must contain a sessions array")
+        if not isinstance(data, dict) or not isinstance(data.get("sessions"), dict):
+            raise ValueError("sessions.json must contain a sessions object")
 
         sessions = {}
-        for item in data["sessions"]:
+        for session_id, item in data["sessions"].items():
             session = Session.from_dict(item)
-            sessions[session.session_id] = session
+            if session.session_id != session_id:
+                raise ValueError("Session id must match its sessions key")
+            sessions[session_id] = session
 
         self._sessions = sessions
 
@@ -134,13 +136,11 @@ class SessionManager:
         self._sessions_file_path.parent.mkdir(parents=True, exist_ok=True)
         temporary_path: Path | None = None
         data = {
-            "sessions": [
-                session.to_dict()
-                for session in sorted(
-                    self._sessions.values(),
-                    key=lambda item: item.session_id,
-                )
-            ],
+            "updatedAt": datetime.now(timezone.utc).isoformat(),
+            "sessions": {
+                session_id: session.to_dict()
+                for session_id, session in sorted(self._sessions.items())
+            },
         }
 
         try:
