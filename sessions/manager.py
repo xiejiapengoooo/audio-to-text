@@ -29,12 +29,8 @@ class SessionManager:
 
     async def start(self) -> None:
         async with self._lock:
-            if self._cleanup_task is not None:
-                return
-
             self._load()
             await self._remove_expired()
-
             self._cleanup_task = asyncio.create_task(
                 self._cleanup_expired(),
                 name="session-cleanup",
