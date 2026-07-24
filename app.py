@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+from common import get_output_dir
 from config import get_settings
 from routers.common import router as health_router
 from routers.session import router as session_router
@@ -17,6 +18,7 @@ from tasks.runner import TaskRunner
 
 def create_app() -> FastAPI:
     settings = get_settings()
+    output_dir = get_output_dir()
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -67,8 +69,9 @@ def create_app() -> FastAPI:
     app.include_router(session_router)
     app.include_router(task_router)
     app.include_router(result_router)
+    app.mount("/output", StaticFiles(directory=output_dir))
     app.mount("/", StaticFiles(directory=Path(__file__).resolve().parent / "static", html=True))
-    app.mount("/output", StaticFiles(directory=settings.output_dir))
+
 
     return app
 
