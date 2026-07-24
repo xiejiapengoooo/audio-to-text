@@ -23,6 +23,11 @@ class TaskRunner:
         self._session_manager = session_manager
         self._providers = dict(providers)
         self._logger = get_logger("TaskRunner")
+        self._current_task: Task | None = None
+
+    @property
+    def current_task(self) -> Task | None:
+        return self._current_task
 
     async def run(self) -> None:
         while True:
@@ -36,6 +41,7 @@ class TaskRunner:
             await self._run_task(task)
 
     async def _run_task(self, task: Task) -> None:
+        self._current_task = task
         try:
             session = await self._session_manager.get(task.session_id)
             if session is None:
@@ -56,6 +62,7 @@ class TaskRunner:
         except Exception:
             self._logger.exception("Task %s failed", task.task_id)
         finally:
+            self._current_task = None
             try:
                 get_waiting_file(task.filename).unlink(missing_ok=True)
             except OSError:

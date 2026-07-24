@@ -41,6 +41,7 @@ def create_app() -> FastAPI:
 
               app.state.session_manager = session_manager
               app.state.task_manager = task_manager
+              app.state.task_runner = task_runner
               app.state.settings = settings
 
               task_group.start_soon(

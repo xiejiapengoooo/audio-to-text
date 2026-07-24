@@ -9,6 +9,18 @@ from routers.dependencies import CurrentSession
 router = APIRouter()
 
 
+@router.get("/task")
+async def get_task(
+    request: Request,
+    session: CurrentSession,
+) -> dict[str, str | None] | None:
+    task = request.app.state.task_runner.current_task
+    if task is None or task.session_id != session.session_id:
+        return None
+
+    return task.to_dict()
+
+
 @router.get("/tasks")
 async def get_tasks(
     request: Request,
