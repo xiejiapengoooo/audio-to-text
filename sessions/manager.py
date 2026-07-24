@@ -1,14 +1,11 @@
-import asyncio
-from contextlib import suppress
 from datetime import datetime, timezone
 import json
 import os
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 import uuid
-
-from anyio import to_thread
-
+from anyio import Event, Lock, fail_after, sleep, to_thread
+from anyio.abc import TaskGroup
 from config import Settings
 from logger import get_logger
 from .session import Session
@@ -22,29 +19,18 @@ class SessionManager:
         self._settings = settings
         self._logger = get_logger("SessionManager")
         self._sessions: dict[str, Session] = {}
-        self._lock = asyncio.Lock()
-        self._cleanup_event = asyncio.Event()
-        self._cleanup_task: asyncio.Task[None] | None = None
+        self._lock = Lock()
+        self._cleanup_event = Event()
         self._sessions_file_path = settings.data_dir / "sessions.json"
 
-    async def start(self) -> None:
+    async def start(self, task_group: TaskGroup) -> None:
         async with self._lock:
             self._load()
             await self._remove_expired()
-            self._cleanup_task = asyncio.create_task(
-                self._cleanup_expired(),
+            task_group.start_soon(
+                self._cleanup_expired,
                 name="session-cleanup",
             )
-
-    async def close(self) -> None:
-        task = self._cleanup_task
-        if task is None:
-            return
-
-        self._cleanup_task = None
-        task.cancel()
-        with suppress(asyncio.CancelledError):
-            await task
 
     async def create(self, session_id: str | None = None) -> Session:
         async with self._lock:
@@ -191,7 +177,8 @@ class SessionManager:
 
     async def _cleanup_expired(self) -> None:
         while True:
-            self._cleanup_event.clear()
+            cleanup_event = Event()
+            self._cleanup_event = cleanup_event
             async with self._lock:
                 if self._sessions:
                     next_expiration = min(
@@ -205,15 +192,16 @@ class SessionManager:
                     delay = None
 
             if delay is None:
-                await self._cleanup_event.wait()
+                await cleanup_event.wait()
                 continue
 
             try:
-                await asyncio.wait_for(self._cleanup_event.wait(), timeout=delay)
+                with fail_after(delay):
+                    await cleanup_event.wait()
             except TimeoutError:
                 try:
                     async with self._lock:
                         await self._remove_expired()
                 except Exception:
                     self._logger.exception("Failed to clean up expired sessions")
-                    await asyncio.sleep(1)
+                    await sleep(1)
