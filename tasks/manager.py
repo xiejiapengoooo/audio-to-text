@@ -28,7 +28,12 @@ class TaskManager:
             if self._tasks:
                 self._condition.notify_all()
 
-    async def create(self, filename: str, session_id: str) -> Task:
+    async def create(
+        self,
+        filename: str,
+        session_id: str,
+        model: str,
+    ) -> Task:
         async with self._condition:
             task_id = str(uuid.uuid4())
             while any(task.task_id == task_id for task in self._tasks):
@@ -38,6 +43,7 @@ class TaskManager:
                 task_id=task_id,
                 session_id=session_id,
                 filename=filename,
+                model=model,
             )
             self._tasks.append(task)
             try:

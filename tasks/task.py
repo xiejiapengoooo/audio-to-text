@@ -6,16 +6,19 @@ class Task:
         task_id: str,
         session_id: str,
         filename: str,
+        model: str | None = None,
     ):
         self.task_id = task_id
         self.session_id = session_id
         self.filename = filename
+        self.model = model
 
-    def to_dict(self) -> dict[str, str]:
+    def to_dict(self) -> dict[str, str | None]:
         return {
             "task_id": self.task_id,
             "filename": self.filename,
-            "session_id": self.session_id
+            "session_id": self.session_id,
+            "model": self.model,
         }
 
     @classmethod
@@ -26,6 +29,7 @@ class Task:
         task_id = data.get("task_id")
         filename = data.get("filename")
         session_id = data.get("session_id")
+        model = data.get("model")
         if filename is None:
             filename = data.get("audio_filename")
         if not isinstance(task_id, str) or not task_id:
@@ -34,9 +38,12 @@ class Task:
             raise ValueError("Task filename must be a non-empty string")
         if not isinstance(session_id, str) or not session_id:
             raise ValueError("Task session_id must be a non-empty string")
+        if model is not None and (not isinstance(model, str) or not model):
+            raise ValueError("Task model must be a non-empty string")
 
         return cls(
             task_id=task_id,
             filename=filename,
             session_id=session_id,
+            model=model,
         )

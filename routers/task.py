@@ -3,7 +3,7 @@ from pathlib import Path
 from tempfile import NamedTemporaryFile
 
 import anyio
-from fastapi import APIRouter, File, Header, HTTPException, Request, UploadFile
+from fastapi import APIRouter, File, Form, Header, HTTPException, Request, UploadFile
 
 router = APIRouter(prefix="/task")
 
@@ -13,6 +13,7 @@ async def create_task(
     request: Request,
     session_id: str = Header(..., alias="session"),
     file: UploadFile = File(...),
+    model: str = Form("whisperx"),
 ) -> str:
     temporary_path: Path | None = None
 
@@ -69,6 +70,7 @@ async def create_task(
             task = await task_manager.create(
                 stored_filename,
                 session.session_id,
+                model,
             )
         except Exception:
             audio_path.unlink(missing_ok=True)
