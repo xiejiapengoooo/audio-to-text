@@ -1,4 +1,6 @@
 from __future__ import annotations
+from common import Model, is_model
+
 
 class Task:
     def __init__(
@@ -6,12 +8,12 @@ class Task:
         task_id: str,
         session_id: str,
         filename: str,
-        model: str | None = None,
+        model: Model,
     ):
         self.task_id = task_id
         self.session_id = session_id
         self.filename = filename
-        self.model = model
+        self.model: Model = model
 
     def to_dict(self) -> dict[str, str | None]:
         return {
@@ -38,8 +40,8 @@ class Task:
             raise ValueError("Task filename must be a non-empty string")
         if not isinstance(session_id, str) or not session_id:
             raise ValueError("Task session_id must be a non-empty string")
-        if model is not None and (not isinstance(model, str) or not model):
-            raise ValueError("Task model must be a non-empty string")
+        if not is_model(model):
+            raise ValueError("Task model is not supported")
 
         return cls(
             task_id=task_id,

@@ -7,6 +7,7 @@ from whisperx.utils import get_writer
 from config import Settings
 from tasks.task import Task
 from .base import BaseProvider
+from common import get_waiting_file, get_output_dir
 
 
 class WhisperXProvider(BaseProvider):
@@ -85,12 +86,12 @@ class WhisperXProvider(BaseProvider):
         result["language"] = language
 
         self._logger.info("output result")
-        writer = get_writer("json", str(self._get_output_dir()))
+        writer = get_writer("json", str(get_output_dir()))
         writer(result, str(waiting_audio), {})
         self._logger.info("result written")
 
     def run(self, task: Task) -> None:
-        waiting_audio = self._get_waiting_file(task.filename)
+        waiting_audio = get_waiting_file(task.filename)
         if not waiting_audio.is_file():
             raise FileNotFoundError(f"Task audio not found: {task.filename}")
 

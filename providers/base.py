@@ -16,17 +16,6 @@ class BaseProvider(ABC):
     def run(self, task: Task) -> None:
         pass
 
-    def _get_waiting_dir(self):
-        self._settings.waiting_dir.mkdir(parents=True, exist_ok=True)
-        return self._settings.waiting_dir
-
-    def _get_waiting_file(self, filename: str):
-        return self._get_waiting_dir() / filename
-
-    def _get_output_dir(self):
-        self._settings.output_dir.mkdir(parents=True, exist_ok=True)
-        return self._settings.output_dir
-
     @staticmethod
     def _run_process(
         ctx: SpawnContext,

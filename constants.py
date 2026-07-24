@@ -1,6 +1,4 @@
-from typing import Literal
+from .common import Model
 
-
-Model = Literal["whisperx"]
 
 DEFAULT_MODEL: Model = "whisperx"
