@@ -9,8 +9,10 @@ from config import get_settings
 from routers.common import router as health_router
 from routers.session import router as session_router
 from routers.task import router as task_router
+from providers.whisperx import WhisperXProvider
 from sessions.manager import SessionManager
 from tasks.manager import TaskManager
+from tasks.runner import TaskRunner
 
 def create_app() -> FastAPI:
     settings = get_settings()
@@ -23,6 +25,13 @@ def create_app() -> FastAPI:
         task_manager = TaskManager(
             settings=settings,
         )
+        whisperx_provider = WhisperXProvider(settings)
+        task_runner = TaskRunner(
+            settings=settings,
+            task_manager=task_manager,
+            session_manager=session_manager,
+            providers={"whisperx": whisperx_provider},
+        )
         async with create_task_group() as task_group:
               await session_manager.start(task_group)
               await task_manager.start()
@@ -30,6 +39,11 @@ def create_app() -> FastAPI:
               app.state.session_manager = session_manager
               app.state.task_manager = task_manager
               app.state.settings = settings
+
+              task_group.start_soon(
+                  task_runner.run,
+                  name="task-runner",
+              )
 
               yield
 
