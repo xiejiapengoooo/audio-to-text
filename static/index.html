@@ -3,10 +3,6 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta
-      name="description"
-      content="上传音频并使用 WhisperX 转换为带时间轴的文字结果。"
-    />
     <meta name="theme-color" content="#66785f" />
     <title>音频转文字</title>
     <link
@@ -341,10 +337,6 @@
         flex: 1;
       }
 
-      .refresh-button.is-spinning svg {
-        animation: spin 800ms linear infinite;
-      }
-
       .processing-bars span {
         display: inline-block;
         width: 3px;
@@ -455,12 +447,6 @@
       .app-toast.is-visible {
         opacity: 1;
         transform: translateY(0);
-      }
-
-      @keyframes spin {
-        to {
-          transform: rotate(360deg);
-        }
       }
 
       @keyframes sound-wave {
@@ -646,15 +632,6 @@
         </section>
 
         <section class="min-w-0" aria-label="转写任务与文件">
-          <div class="mb-5 flex justify-end">
-            <button class="btn btn-outline btn-sm refresh-button" id="refreshButton" type="button">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M20 6v5h-5M4 18v-5h5M18.5 9a7 7 0 0 0-11.7-2.6L4 9m16 6-2.8 2.6A7 7 0 0 1 5.5 15" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" />
-              </svg>
-              刷新
-            </button>
-          </div>
-
           <div class="metric-grid mb-5" aria-label="转写概览">
             <button
               class="metric-card metric-button p-4"
@@ -805,7 +782,6 @@
           progressBar: document.querySelector("#progressBar"),
           uploadButton: document.querySelector("#uploadButton"),
           uploadButtonLabel: document.querySelector("#uploadButtonLabel"),
-          refreshButton: document.querySelector("#refreshButton"),
           queueCount: document.querySelector("#queueCount"),
           queueNote: document.querySelector("#queueNote"),
           resultCount: document.querySelector("#resultCount"),
@@ -1221,9 +1197,6 @@
           }
 
           state.refreshing = true;
-          elements.refreshButton.disabled = true;
-          elements.refreshButton.classList.add("is-spinning");
-
           if (initial) {
             renderSkeleton(elements.queueContent, 2);
             renderSkeleton(elements.resultsContent, 3);
@@ -1275,8 +1248,6 @@
           }
 
           state.refreshing = false;
-          elements.refreshButton.disabled = false;
-          elements.refreshButton.classList.remove("is-spinning");
         }
 
         function clearSelectedFile() {
@@ -1642,7 +1613,6 @@
               elements.audioInput.click();
             }
           });
-          elements.refreshButton.addEventListener("click", () => refreshData({ notify: true }));
           elements.connectionButton.addEventListener("click", reconnect);
           elements.closeDialogButton.addEventListener("click", closeDialog);
           elements.copyResultButton.addEventListener("click", copyPreviewText);
