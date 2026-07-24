@@ -5,6 +5,7 @@ from tempfile import TemporaryDirectory
 import whisperx
 from whisperx.utils import get_writer
 from config import Settings
+from tasks.task import Task
 from .base import BaseProvider
 
 
@@ -88,29 +89,25 @@ class WhisperXProvider(BaseProvider):
         writer(result, str(waiting_audio), {})
         self._logger.info("result written")
 
-    def run(self):
-      mp_ctx = multiprocessing.get_context("spawn")
-      waiting_audio = self._get_waiting_audio()
-      if waiting_audio is None:
-          self._logger.info("waiting audio is empty")
-          return
+    def run(self, task: Task):
+        waiting_audio = self._get_waiting_file(task.filename)
+        if not waiting_audio.is_file():
+            raise FileNotFoundError(f"Task audio not found: {task.filename}")
 
-      with TemporaryDirectory(prefix=f"{self._settings.app_name}-") as temp_dir:
-          temp_dir = Path(temp_dir)
+        mp_ctx = multiprocessing.get_context("spawn")
+        with TemporaryDirectory(prefix=f"{self._settings.app_name}-") as temp_dir:
+            temp_dir = Path(temp_dir)
 
-          self._run_process(
-              mp_ctx,
-              self._handle_transcription,
-              "Transcription",
-              args=(temp_dir, waiting_audio),
-          )
+            self._run_process(
+                mp_ctx,
+                self._handle_transcription,
+                "Transcription",
+                args=(temp_dir, waiting_audio),
+            )
 
-          self._run_process(
-              mp_ctx,
-              self._handle_alignment,
-              "Alignment",
-              args=(temp_dir, waiting_audio),
-          )
-
-      waiting_audio.unlink(missing_ok=True)
-      self._logger.info("waiting audio removed")
+            self._run_process(
+                mp_ctx,
+                self._handle_alignment,
+                "Alignment",
+                args=(temp_dir, waiting_audio),
+            )

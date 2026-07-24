@@ -14,13 +14,8 @@ class BaseProvider:
         self._settings.waiting_dir.mkdir(parents=True, exist_ok=True)
         return self._settings.waiting_dir
 
-    def _get_waiting_audio(self):
-        waiting_audio = (path for path in self._get_waiting_dir().iterdir() if path.is_file())
-        return min(
-            waiting_audio,
-            key=lambda path: (path.stat().st_ctime_ns, path.name),
-            default=None,
-        )
+    def _get_waiting_file(self, filename: str):
+        return self._get_waiting_dir() / filename
 
     def _get_output_dir(self):
         self._settings.output_dir.mkdir(parents=True, exist_ok=True)
