@@ -13,8 +13,11 @@ router = APIRouter()
 async def get_tasks(
     request: Request,
     session: CurrentSession,
-):
-    pass
+) -> list[dict[str, str | None]]:
+    task_manager = request.app.state.task_manager
+    tasks = await task_manager.get_tasks(session.session_id)
+
+    return [task.to_dict() for task in tasks]
 
 
 @router.post("/task")

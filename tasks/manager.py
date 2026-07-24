@@ -69,6 +69,12 @@ class TaskManager:
 
             return task
 
+    async def get_tasks(self, session_id: str) -> list[Task]:
+        async with self._condition:
+            return [
+                task for task in self._tasks if task.session_id == session_id
+            ]
+
     def _load(self) -> None:
         if not self._tasks_file_path.exists():
             return
