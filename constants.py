@@ -1,4 +1,4 @@
-from .common import Model
+from common import Model
 
 
 DEFAULT_MODEL: Model = "whisperx"

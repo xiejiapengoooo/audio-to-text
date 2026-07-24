@@ -1,5 +1,6 @@
 from typing import Literal, TypeGuard, get_args, Any
 from config import get_settings
+from fastapi import Header
 
 
 Model = Literal["whisperx"]
@@ -21,3 +22,7 @@ def get_waiting_file(filename: str):
 def get_output_dir():
     get_settings().output_dir.mkdir(parents=True, exist_ok=True)
     return get_settings().output_dir
+
+
+def getHeadersSessionId():
+    return Header(..., alias="session")
