@@ -7,6 +7,7 @@ from pathlib import Path
 from tempfile import NamedTemporaryFile
 from anyio import Condition, to_thread
 from config import Settings
+from constants import Model
 from logger import get_logger
 from .task import Task
 
@@ -32,7 +33,7 @@ class TaskManager:
         self,
         filename: str,
         session_id: str,
-        model: str,
+        model: Model,
     ) -> Task:
         async with self._condition:
             task_id = str(uuid.uuid4())
