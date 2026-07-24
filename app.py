@@ -9,6 +9,7 @@ from config import get_settings
 from routers.common import router as health_router
 from routers.session import router as session_router
 from routers.task import router as task_router
+from routers.result import router as result_router
 from providers.whisperx import WhisperXProvider
 from sessions.manager import SessionManager
 from tasks.manager import TaskManager
@@ -65,6 +66,7 @@ def create_app() -> FastAPI:
     app.include_router(health_router)
     app.include_router(session_router)
     app.include_router(task_router)
+    app.include_router(result_router)
     app.mount("/", StaticFiles(directory=Path(__file__).resolve().parent / "static", html=True))
 
     return app
