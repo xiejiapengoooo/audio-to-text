@@ -7,8 +7,8 @@
       name="description"
       content="上传音频并使用 WhisperX 转换为带时间轴的文字结果。"
     />
-    <meta name="theme-color" content="#6E8165" />
-    <title>Audio to Text</title>
+    <meta name="theme-color" content="#66785f" />
+    <title>Audio to Text · 音频转文字</title>
     <link
       href="https://cdn.jsdelivr.net/npm/daisyui@5"
       rel="stylesheet"
@@ -25,33 +25,1705 @@
         --color-primary: oklch(58% 0.048 136);
         --color-primary-content: oklch(99% 0.003 110);
         --color-secondary: oklch(69% 0.034 112);
-        --color-secondary-content: oklch(99% 0.003 110);
+        --color-secondary-content: oklch(23% 0.018 112);
         --color-accent: oklch(84% 0.032 88);
         --color-accent-content: oklch(28% 0.02 88);
         --color-neutral: oklch(39% 0.024 116);
         --color-neutral-content: oklch(98% 0.003 110);
         --color-info: oklch(73% 0.048 225);
-        --color-info-content: oklch(99% 0.003 225);
-        --color-success: oklch(74% 0.05 145);
+        --color-info-content: oklch(24% 0.025 225);
+        --color-success: oklch(69% 0.08 145);
         --color-success-content: oklch(99% 0.003 145);
-        --color-warning: oklch(84% 0.042 95);
+        --color-warning: oklch(80% 0.08 86);
         --color-warning-content: oklch(28% 0.022 90);
-        --color-error: oklch(67% 0.07 25);
+        --color-error: oklch(63% 0.12 25);
         --color-error-content: oklch(99% 0.003 25);
         --radius-selector: 0rem;
         --radius-field: 0rem;
         --radius-box: 0rem;
-        --size-selector: 0.28125rem;
-        --size-field: 0.28125rem;
-        --border: 2px;
+        --size-selector: 0.25rem;
+        --size-field: 0.25rem;
+        --border: 1px;
         --depth: 0;
         --noise: 0;
       }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        min-width: 320px;
+        scroll-behavior: smooth;
+      }
+
+      body {
+        min-width: 320px;
+        min-height: 100vh;
+        margin: 0;
+        background:
+          radial-gradient(circle at 6% 0%, rgba(146, 166, 135, 0.16), transparent 30rem),
+          radial-gradient(circle at 100% 12%, rgba(226, 204, 148, 0.2), transparent 28rem),
+          var(--color-base-200);
+        font-family:
+          Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      button,
+      input {
+        font: inherit;
+      }
+
+      [hidden] {
+        display: none !important;
+      }
+
+      .app-shell {
+        width: min(1180px, calc(100% - 40px));
+        margin-inline: auto;
+      }
+
+      .connection-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 0;
+        background: var(--color-warning);
+        box-shadow: 0 0 0 4px color-mix(in oklab, var(--color-warning) 18%, transparent);
+      }
+
+      #connectionButton[data-status="online"] .connection-dot {
+        background: var(--color-success);
+        box-shadow: 0 0 0 4px color-mix(in oklab, var(--color-success) 18%, transparent);
+      }
+
+      #connectionButton[data-status="offline"] .connection-dot {
+        background: var(--color-error);
+        box-shadow: 0 0 0 4px color-mix(in oklab, var(--color-error) 16%, transparent);
+      }
+
+      .hero-title {
+        max-width: 720px;
+        text-wrap: balance;
+      }
+
+      .hero-copy {
+        max-width: 650px;
+        text-wrap: pretty;
+      }
+
+      .workspace-grid {
+        display: grid;
+        grid-template-columns: minmax(330px, 0.78fr) minmax(0, 1.42fr);
+        align-items: start;
+        gap: 24px;
+      }
+
+      .workspace-grid > * {
+        min-width: 0;
+      }
+
+      .upload-card {
+        position: sticky;
+        top: 24px;
+      }
+
+      .upload-dropzone {
+        display: grid;
+        min-height: 238px;
+        padding: 32px 24px;
+        place-items: center;
+        border: 1.5px dashed color-mix(in oklab, var(--color-primary) 52%, var(--color-base-300));
+        border-radius: 0;
+        background:
+          linear-gradient(
+            color-mix(in oklab, var(--color-base-100) 84%, transparent),
+            color-mix(in oklab, var(--color-base-100) 84%, transparent)
+          ),
+          repeating-linear-gradient(
+            -45deg,
+            color-mix(in oklab, var(--color-primary) 4%, transparent),
+            color-mix(in oklab, var(--color-primary) 4%, transparent) 8px,
+            transparent 8px,
+            transparent 16px
+          );
+        cursor: pointer;
+        text-align: center;
+        transition:
+          border-color 180ms ease,
+          background-color 180ms ease,
+          transform 180ms ease,
+          box-shadow 180ms ease;
+      }
+
+      .upload-dropzone:hover,
+      .upload-dropzone:focus-visible,
+      .upload-dropzone.is-dragging {
+        border-color: var(--color-primary);
+        background-color: color-mix(in oklab, var(--color-primary) 7%, var(--color-base-100));
+        box-shadow: 0 0 0 4px color-mix(in oklab, var(--color-primary) 9%, transparent);
+        outline: none;
+        transform: translateY(-2px);
+      }
+
+      .upload-icon {
+        display: grid;
+        width: 64px;
+        height: 64px;
+        margin: 0 auto 18px;
+        place-items: center;
+        border-radius: 0;
+        color: var(--color-primary-content);
+        background: var(--color-primary);
+        box-shadow: 0 14px 28px rgba(77, 98, 70, 0.2);
+      }
+
+      .selected-file-panel {
+        border: 1px solid var(--color-base-300);
+        border-radius: 0;
+        background: color-mix(in oklab, var(--color-base-200) 70%, var(--color-base-100));
+      }
+
+      .file-copy {
+        min-width: 0;
+      }
+
+      .truncate-line {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .audio-preview {
+        width: 100%;
+        height: 42px;
+      }
+
+      .audio-preview::-webkit-media-controls-enclosure {
+        border-radius: 0;
+        background: var(--color-base-100);
+      }
+
+      .metric-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+      }
+
+      .metric-card {
+        min-width: 0;
+        border: 1px solid var(--color-base-300);
+        border-radius: 0;
+        color: inherit;
+        background: color-mix(in oklab, var(--color-base-100) 92%, transparent);
+        text-align: left;
+      }
+
+      .metric-button {
+        cursor: pointer;
+        transition:
+          border-color 160ms ease,
+          background-color 160ms ease;
+      }
+
+      .metric-button:hover,
+      .metric-button:focus-visible {
+        border-color: var(--color-primary);
+        background: color-mix(in oklab, var(--color-primary) 5%, var(--color-base-100));
+      }
+
+      .metric-value {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .content-panel {
+        overflow: hidden;
+        border: 1px solid var(--color-base-300);
+        border-radius: 0;
+        background: var(--color-base-100);
+        box-shadow: 0 14px 38px rgba(59, 68, 55, 0.05);
+      }
+
+      .panel-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 20px 22px;
+        border-bottom: 1px solid var(--color-base-300);
+      }
+
+      .panel-body-note {
+        padding: 11px 22px;
+        border-bottom: 1px solid var(--color-base-300);
+        color: color-mix(in oklab, var(--color-base-content) 62%, transparent);
+        background: color-mix(in oklab, var(--color-base-200) 72%, var(--color-base-100));
+        font-size: 12px;
+        line-height: 1.55;
+      }
+
+      .data-list {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .data-row {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        min-width: 0;
+        padding: 17px 20px;
+      }
+
+      .data-row + .data-row {
+        border-top: 1px solid var(--color-base-300);
+      }
+
+      .data-row:hover {
+        background: color-mix(in oklab, var(--color-primary) 3%, var(--color-base-100));
+      }
+
+      .data-icon {
+        display: grid;
+        width: 44px;
+        height: 44px;
+        flex: 0 0 auto;
+        place-items: center;
+        border-radius: 0;
+        color: var(--color-primary);
+        background: color-mix(in oklab, var(--color-primary) 11%, var(--color-base-100));
+      }
+
+      .data-icon.is-processing {
+        color: var(--color-warning-content);
+        background: color-mix(in oklab, var(--color-warning) 28%, var(--color-base-100));
+      }
+
+      .data-copy {
+        min-width: 0;
+        flex: 1;
+      }
+
+      .data-actions {
+        display: flex;
+        flex: 0 0 auto;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .empty-state {
+        display: grid;
+        min-height: 210px;
+        padding: 34px 24px;
+        place-items: center;
+        color: color-mix(in oklab, var(--color-base-content) 58%, transparent);
+        text-align: center;
+      }
+
+      .empty-icon {
+        display: grid;
+        width: 56px;
+        height: 56px;
+        margin: 0 auto 14px;
+        place-items: center;
+        border-radius: 0;
+        color: var(--color-primary);
+        background: color-mix(in oklab, var(--color-primary) 10%, var(--color-base-100));
+      }
+
+      .skeleton-row {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 17px 20px;
+      }
+
+      .skeleton-row + .skeleton-row {
+        border-top: 1px solid var(--color-base-300);
+      }
+
+      .skeleton-copy {
+        min-width: 0;
+        flex: 1;
+      }
+
+      .refresh-button.is-spinning svg {
+        animation: spin 800ms linear infinite;
+      }
+
+      .processing-bars span {
+        display: inline-block;
+        width: 3px;
+        margin-inline: 1px;
+        border-radius: 0;
+        background: currentColor;
+        animation: sound-wave 900ms ease-in-out infinite alternate;
+      }
+
+      .processing-bars span:nth-child(1) {
+        height: 9px;
+      }
+
+      .processing-bars span:nth-child(2) {
+        height: 17px;
+        animation-delay: 150ms;
+      }
+
+      .processing-bars span:nth-child(3) {
+        height: 12px;
+        animation-delay: 300ms;
+      }
+
+      .processing-bars span:nth-child(4) {
+        height: 20px;
+        animation-delay: 450ms;
+      }
+
+      .result-dialog {
+        width: min(900px, calc(100% - 32px));
+        max-width: none;
+        max-height: min(86vh, 900px);
+        padding: 0;
+        overflow: hidden;
+      }
+
+      .dialog-layout {
+        display: flex;
+        max-height: min(86vh, 900px);
+        flex-direction: column;
+      }
+
+      .dialog-body {
+        overflow: auto;
+      }
+
+      .transcript-overview {
+        border: 1px solid color-mix(in oklab, var(--color-primary) 25%, var(--color-base-300));
+        border-radius: 0;
+        background: color-mix(in oklab, var(--color-primary) 6%, var(--color-base-100));
+      }
+
+      .segment-list {
+        display: grid;
+        gap: 8px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .segment-item {
+        display: grid;
+        grid-template-columns: 95px minmax(0, 1fr);
+        gap: 16px;
+        padding: 14px 16px;
+        border-radius: 0;
+        background: var(--color-base-200);
+      }
+
+      .segment-time {
+        padding-top: 2px;
+        color: var(--color-primary);
+        font-size: 11px;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .raw-result {
+        overflow: auto;
+        margin: 0;
+        padding: 18px;
+        border-radius: 0;
+        color: #e7f2e3;
+        background: #283128;
+        font: 12px/1.75 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        white-space: pre-wrap;
+      }
+
+      .toast-region {
+        position: fixed;
+        z-index: 100;
+        right: 20px;
+        bottom: 20px;
+        display: grid;
+        width: min(370px, calc(100vw - 40px));
+        gap: 10px;
+        pointer-events: none;
+      }
+
+      .app-toast {
+        opacity: 0;
+        transform: translateY(10px);
+        transition:
+          opacity 180ms ease,
+          transform 180ms ease;
+      }
+
+      .app-toast.is-visible {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      @keyframes sound-wave {
+        from {
+          transform: scaleY(0.45);
+        }
+        to {
+          transform: scaleY(1);
+        }
+      }
+
+      @media (max-width: 900px) {
+        .workspace-grid {
+          grid-template-columns: minmax(0, 1fr);
+        }
+
+        .upload-card {
+          position: static;
+        }
+      }
+
+      @media (max-width: 640px) {
+        .app-shell {
+          width: min(calc(100% - 24px), 1180px);
+        }
+
+        .hero-copy,
+        .selected-file-panel,
+        .panel-body-note {
+          overflow-wrap: anywhere;
+        }
+
+        .metric-grid {
+          grid-template-columns: 1fr;
+          gap: 8px;
+        }
+
+        .metric-card {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 16px;
+          padding: 14px 16px;
+        }
+
+        .metric-card .metric-label {
+          margin-bottom: 0;
+        }
+
+        .metric-card .metric-value {
+          font-size: 18px;
+        }
+
+        .data-row {
+          align-items: flex-start;
+          padding: 16px;
+        }
+
+        .data-icon {
+          width: 40px;
+          height: 40px;
+        }
+
+        .result-row {
+          flex-wrap: wrap;
+        }
+
+        .result-row .data-actions {
+          width: 100%;
+          padding-left: 54px;
+        }
+
+        .result-row .data-actions > * {
+          flex: 1;
+        }
+
+        .segment-item {
+          grid-template-columns: 1fr;
+          gap: 5px;
+        }
+
+        .result-dialog {
+          width: calc(100% - 20px);
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          scroll-behavior: auto !important;
+          animation-duration: 0.01ms !important;
+          animation-iteration-count: 1 !important;
+          transition-duration: 0.01ms !important;
+        }
+      }
     </style>
   </head>
-  <body>
-    <button class="btn btn-primary">
-      Hello
-    </button>
+  <body class="text-base-content">
+    <main class="app-shell min-h-screen py-10 sm:py-14">
+      <section class="mb-10 sm:mb-12" aria-labelledby="page-title">
+        <div class="badge badge-soft badge-primary mb-5 gap-2 px-3 py-3">
+          <span class="size-1.5 bg-primary" aria-hidden="true"></span>
+          WhisperX · Large V3
+        </div>
+        <h1
+          class="hero-title mb-5 text-4xl font-semibold leading-tight tracking-[-0.045em] sm:text-5xl lg:text-6xl"
+          id="page-title"
+        >
+          把声音，整理成<br class="hidden sm:block" />清晰可用的文字
+        </h1>
+        <p class="hero-copy mb-0 text-base leading-7 text-base-content/60 sm:text-lg sm:leading-8">
+          上传音频后自动进入转写队列，完成语音识别与时间轴对齐。结果可在线查看，也可以下载留存。
+        </p>
+      </section>
+
+      <div class="workspace-grid">
+        <section class="card upload-card border border-base-300 bg-base-100 shadow-sm" aria-labelledby="upload-title">
+          <div class="card-body gap-5 p-5 sm:p-6">
+            <div class="flex items-start justify-between gap-4">
+              <div>
+                <h2 class="card-title text-xl tracking-tight" id="upload-title">上传音频</h2>
+                <p class="mt-1 text-sm leading-6 text-base-content/55">选择一个文件开始转写</p>
+              </div>
+              <span class="badge badge-outline badge-sm whitespace-nowrap">单文件</span>
+            </div>
+
+            <label
+              class="upload-dropzone"
+              id="dropZone"
+              for="audioInput"
+              role="button"
+              tabindex="0"
+            >
+              <input
+                id="audioInput"
+                type="file"
+                accept="audio/*,.aac,.flac,.m4a,.mp3,.ogg,.opus,.wav"
+                hidden
+              />
+              <span>
+                <span class="upload-icon" aria-hidden="true">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                    <path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                </span>
+                <strong class="mb-2 block text-base">拖放音频到这里</strong>
+                <span class="block text-sm leading-6 text-base-content/50">或点击浏览本地文件</span>
+              </span>
+            </label>
+
+            <div class="selected-file-panel p-4" id="selectedFile" hidden>
+              <div class="flex min-w-0 items-center gap-3">
+                <span class="grid size-11 flex-none place-items-center bg-primary/10 text-primary" aria-hidden="true">
+                  <svg width="21" height="21" viewBox="0 0 24 24" fill="none">
+                    <path d="M9 18V5l10-2v13M9 9l10-2M9 18a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm10-2a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                </span>
+                <div class="file-copy flex-1">
+                  <div class="truncate-line text-sm font-semibold" id="selectedFileName"></div>
+                  <p class="mt-1 mb-0 text-xs text-base-content/50" id="selectedFileMeta"></p>
+                </div>
+                <button class="btn btn-ghost btn-sm btn-square" id="removeFileButton" type="button" aria-label="移除所选文件">
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="m6 6 12 12M18 6 6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                  </svg>
+                </button>
+              </div>
+              <audio class="audio-preview mt-4" id="audioPreview" controls preload="metadata"></audio>
+            </div>
+
+            <div id="uploadProgress" hidden>
+              <div class="mb-2 flex items-center justify-between text-xs text-base-content/55">
+                <span id="progressLabel">正在上传</span>
+                <span class="font-medium tabular-nums" id="progressValue">0%</span>
+              </div>
+              <progress
+                class="progress progress-primary w-full"
+                id="progressBar"
+                value="0"
+                max="100"
+                aria-label="上传进度"
+              ></progress>
+            </div>
+
+            <button class="btn btn-primary btn-block" id="uploadButton" type="button">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M12 6v12M6 12h12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" />
+              </svg>
+              <span id="uploadButtonLabel">选择音频文件</span>
+            </button>
+
+            <div class="flex gap-2 bg-base-200 p-3 text-xs leading-5 text-base-content/55">
+              <svg class="mt-0.5 flex-none text-primary" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8" />
+                <path d="M12 11v5m0-8h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+              </svg>
+              <span>支持 AAC、FLAC、M4A、MP3、OGG、OPUS、WAV，文件按当前浏览器会话隔离。</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="min-w-0" aria-labelledby="workspace-title">
+          <div class="mb-5 flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <h2 class="text-2xl font-semibold tracking-tight" id="workspace-title">处理中心</h2>
+              <p class="mt-1 mb-0 text-sm text-base-content/50" id="lastUpdated">任务和文件会自动更新</p>
+            </div>
+            <button class="btn btn-outline btn-sm refresh-button" id="refreshButton" type="button">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M20 6v5h-5M4 18v-5h5M18.5 9a7 7 0 0 0-11.7-2.6L4 9m16 6-2.8 2.6A7 7 0 0 1 5.5 15" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+              刷新
+            </button>
+          </div>
+
+          <div class="metric-grid mb-5" aria-label="转写概览">
+            <button
+              class="metric-card metric-button p-4"
+              id="connectionButton"
+              type="button"
+              data-status="connecting"
+              title="点击重新连接"
+            >
+              <div class="metric-label mb-2 flex items-center gap-2 text-xs text-base-content/50">
+                <span class="connection-dot" aria-hidden="true"></span>
+                服务状态
+              </div>
+              <div class="metric-value text-xl font-semibold tracking-tight" id="serviceMetric">连接中</div>
+              <span class="sr-only" id="connectionLabel">正在连接</span>
+            </button>
+            <div class="metric-card p-4">
+              <div class="metric-label mb-2 text-xs text-base-content/50">待处理任务</div>
+              <div class="metric-value text-xl font-semibold tracking-tight" id="queueMetric">—</div>
+            </div>
+            <div class="metric-card p-4">
+              <div class="metric-label mb-2 text-xs text-base-content/50">已完成文件</div>
+              <div class="metric-value text-xl font-semibold tracking-tight" id="resultMetric">—</div>
+            </div>
+          </div>
+
+          <div class="grid gap-5">
+            <section class="content-panel" aria-labelledby="queue-title">
+              <div class="panel-header">
+                <div class="flex items-center gap-2">
+                  <h3 class="font-semibold tracking-tight" id="queue-title">待处理任务</h3>
+                  <span class="badge badge-primary badge-sm" id="queueCount">0</span>
+                </div>
+                <span class="text-xs text-base-content/45">按提交顺序处理</span>
+              </div>
+              <div class="panel-body-note" id="queueNote">正在读取任务状态…</div>
+              <div id="queueContent" aria-live="polite"></div>
+            </section>
+
+            <section class="content-panel" aria-labelledby="results-title">
+              <div class="panel-header">
+                <div class="flex items-center gap-2">
+                  <h3 class="font-semibold tracking-tight" id="results-title">已完成文件</h3>
+                  <span class="badge badge-primary badge-sm" id="resultCount">0</span>
+                </div>
+                <span class="badge badge-ghost badge-sm">JSON</span>
+              </div>
+              <div id="resultsContent" aria-live="polite"></div>
+            </section>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <div class="toast-region" id="toastRegion" aria-live="polite" aria-atomic="true"></div>
+
+    <dialog class="modal" id="resultDialog" aria-labelledby="dialogTitle">
+      <div class="modal-box result-dialog bg-base-100">
+        <div class="dialog-layout">
+          <div class="flex items-start justify-between gap-4 border-b border-base-300 px-5 py-5 sm:px-6">
+            <div class="min-w-0">
+              <h2 class="truncate-line text-lg font-semibold tracking-tight" id="dialogTitle">转写结果</h2>
+              <p class="mt-1 mb-0 text-xs text-base-content/50" id="dialogMeta"></p>
+            </div>
+            <button class="btn btn-ghost btn-sm btn-square flex-none" id="closeDialogButton" type="button" aria-label="关闭结果预览">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="m6 6 12 12M18 6 6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+              </svg>
+            </button>
+          </div>
+
+          <div class="dialog-body p-5 sm:p-6" id="dialogBody"></div>
+
+          <div class="flex flex-wrap justify-end gap-2 border-t border-base-300 bg-base-200/70 px-5 py-4 sm:px-6">
+            <button class="btn btn-outline btn-sm" id="copyResultButton" type="button" disabled>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <rect x="8" y="8" width="11" height="11" rx="2" stroke="currentColor" stroke-width="1.8" />
+                <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" stroke="currentColor" stroke-width="1.8" />
+              </svg>
+              复制文字
+            </button>
+            <a class="btn btn-primary btn-sm" id="downloadResultLink" href="#" download>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M12 4v11m0 0 4-4m-4 4-4-4M5 19h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+              下载 JSON
+            </a>
+          </div>
+        </div>
+      </div>
+      <form method="dialog" class="modal-backdrop">
+        <button aria-label="关闭结果预览">关闭</button>
+      </form>
+    </dialog>
+
+    <script>
+      (() => {
+        "use strict";
+
+        const SESSION_KEY = "audio-to-text.session-id";
+        const POLL_INTERVAL = 5000;
+        const ALLOWED_EXTENSIONS = new Set([
+          ".aac",
+          ".flac",
+          ".m4a",
+          ".mp3",
+          ".ogg",
+          ".opus",
+          ".wav",
+        ]);
+        const MIME_TYPES = {
+          ".aac": "audio/aac",
+          ".flac": "audio/flac",
+          ".m4a": "audio/mp4",
+          ".mp3": "audio/mpeg",
+          ".ogg": "audio/ogg",
+          ".opus": "audio/opus",
+          ".wav": "audio/wav",
+        };
+
+        const state = {
+          sessionId: "",
+          selectedFile: null,
+          previewUrl: "",
+          previewText: "",
+          uploading: false,
+          refreshing: false,
+          sessionPromise: null,
+          currentTask: null,
+          tasks: [],
+          results: [],
+        };
+
+        const elements = {
+          connectionButton: document.querySelector("#connectionButton"),
+          connectionLabel: document.querySelector("#connectionLabel"),
+          serviceMetric: document.querySelector("#serviceMetric"),
+          queueMetric: document.querySelector("#queueMetric"),
+          resultMetric: document.querySelector("#resultMetric"),
+          dropZone: document.querySelector("#dropZone"),
+          audioInput: document.querySelector("#audioInput"),
+          selectedFile: document.querySelector("#selectedFile"),
+          selectedFileName: document.querySelector("#selectedFileName"),
+          selectedFileMeta: document.querySelector("#selectedFileMeta"),
+          removeFileButton: document.querySelector("#removeFileButton"),
+          audioPreview: document.querySelector("#audioPreview"),
+          uploadProgress: document.querySelector("#uploadProgress"),
+          progressLabel: document.querySelector("#progressLabel"),
+          progressValue: document.querySelector("#progressValue"),
+          progressBar: document.querySelector("#progressBar"),
+          uploadButton: document.querySelector("#uploadButton"),
+          uploadButtonLabel: document.querySelector("#uploadButtonLabel"),
+          refreshButton: document.querySelector("#refreshButton"),
+          lastUpdated: document.querySelector("#lastUpdated"),
+          queueCount: document.querySelector("#queueCount"),
+          queueNote: document.querySelector("#queueNote"),
+          resultCount: document.querySelector("#resultCount"),
+          queueContent: document.querySelector("#queueContent"),
+          resultsContent: document.querySelector("#resultsContent"),
+          toastRegion: document.querySelector("#toastRegion"),
+          resultDialog: document.querySelector("#resultDialog"),
+          dialogTitle: document.querySelector("#dialogTitle"),
+          dialogMeta: document.querySelector("#dialogMeta"),
+          dialogBody: document.querySelector("#dialogBody"),
+          closeDialogButton: document.querySelector("#closeDialogButton"),
+          copyResultButton: document.querySelector("#copyResultButton"),
+          downloadResultLink: document.querySelector("#downloadResultLink"),
+        };
+
+        function getStoredSession() {
+          try {
+            return window.localStorage.getItem(SESSION_KEY) || "";
+          } catch {
+            return "";
+          }
+        }
+
+        function storeSession(sessionId) {
+          try {
+            window.localStorage.setItem(SESSION_KEY, sessionId);
+          } catch {
+            // Local storage may be unavailable in privacy-restricted browsers.
+          }
+        }
+
+        function setConnectionStatus(status) {
+          const labels = {
+            connecting: "正在连接",
+            online: "服务在线",
+            offline: "连接失败",
+          };
+          const metrics = {
+            connecting: "连接中",
+            online: "运行正常",
+            offline: "暂时离线",
+          };
+
+          elements.connectionButton.dataset.status = status;
+          elements.connectionLabel.textContent = labels[status];
+          elements.serviceMetric.textContent = metrics[status];
+        }
+
+        async function readError(response) {
+          try {
+            const body = await response.json();
+            if (typeof body.detail === "string") {
+              return body.detail;
+            }
+          } catch {
+            // Fall through to the status-based message below.
+          }
+          return `请求失败（${response.status}）`;
+        }
+
+        async function ensureSession() {
+          if (state.sessionId) {
+            return state.sessionId;
+          }
+
+          if (state.sessionPromise) {
+            return state.sessionPromise;
+          }
+
+          state.sessionPromise = (async () => {
+            const previousSession = getStoredSession();
+            const headers = previousSession ? { session: previousSession } : {};
+            const response = await fetch("/session", {
+              method: "POST",
+              headers,
+              cache: "no-store",
+            });
+
+            if (!response.ok) {
+              throw new Error(await readError(response));
+            }
+
+            const sessionId = await response.json();
+            if (typeof sessionId !== "string" || !sessionId) {
+              throw new Error("服务返回了无效会话");
+            }
+
+            state.sessionId = sessionId;
+            storeSession(sessionId);
+            setConnectionStatus("online");
+            updateUploadButton();
+            return sessionId;
+          })();
+
+          try {
+            return await state.sessionPromise;
+          } finally {
+            state.sessionPromise = null;
+          }
+        }
+
+        async function apiRequest(path, options = {}, retry = true) {
+          await ensureSession();
+          const headers = new Headers(options.headers || {});
+          headers.set("session", state.sessionId);
+          const response = await fetch(path, {
+            ...options,
+            headers,
+            cache: "no-store",
+          });
+
+          if (response.status === 404 && retry) {
+            state.sessionId = "";
+            await ensureSession();
+            return apiRequest(path, options, false);
+          }
+
+          if (!response.ok) {
+            throw new Error(await readError(response));
+          }
+
+          return response.json();
+        }
+
+        function getExtension(filename) {
+          const lastDot = filename.lastIndexOf(".");
+          return lastDot >= 0 ? filename.slice(lastDot).toLowerCase() : "";
+        }
+
+        function displayFilename(filename) {
+          const prefix = state.sessionId ? `${state.sessionId}_` : "";
+          return prefix && filename.startsWith(prefix)
+            ? filename.slice(prefix.length)
+            : filename;
+        }
+
+        function formatBytes(bytes) {
+          const value = Number(bytes);
+          if (!Number.isFinite(value) || value <= 0) {
+            return "0 B";
+          }
+
+          const units = ["B", "KB", "MB", "GB"];
+          const index = Math.min(
+            Math.floor(Math.log(value) / Math.log(1024)),
+            units.length - 1,
+          );
+          const amount = value / 1024 ** index;
+          const digits = index === 0 || amount >= 100 ? 0 : 1;
+          return `${amount.toFixed(digits)} ${units[index]}`;
+        }
+
+        function formatDate(timestampSeconds) {
+          const date = new Date(Number(timestampSeconds) * 1000);
+          if (Number.isNaN(date.getTime())) {
+            return "时间未知";
+          }
+          return new Intl.DateTimeFormat("zh-CN", {
+            month: "short",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          }).format(date);
+        }
+
+        function formatTime(seconds) {
+          const value = Math.max(0, Number(seconds) || 0);
+          const hours = Math.floor(value / 3600);
+          const minutes = Math.floor((value % 3600) / 60);
+          const remainingSeconds = Math.floor(value % 60);
+          const base = `${String(minutes).padStart(2, "0")}:${String(remainingSeconds).padStart(2, "0")}`;
+          return hours > 0 ? `${String(hours).padStart(2, "0")}:${base}` : base;
+        }
+
+        function createIcon(path, size = 17) {
+          const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+          svg.setAttribute("width", String(size));
+          svg.setAttribute("height", String(size));
+          svg.setAttribute("viewBox", "0 0 24 24");
+          svg.setAttribute("fill", "none");
+          svg.setAttribute("aria-hidden", "true");
+
+          const pathElement = document.createElementNS("http://www.w3.org/2000/svg", "path");
+          pathElement.setAttribute("d", path);
+          pathElement.setAttribute("stroke", "currentColor");
+          pathElement.setAttribute("stroke-width", "1.9");
+          pathElement.setAttribute("stroke-linecap", "round");
+          pathElement.setAttribute("stroke-linejoin", "round");
+          svg.append(pathElement);
+          return svg;
+        }
+
+        function showToast(message, type = "success") {
+          const toast = document.createElement("div");
+          toast.className = `alert app-toast shadow-lg ${type === "error" ? "alert-error" : "alert-success"}`;
+
+          const icon = document.createElement("span");
+          icon.className = "grid size-6 flex-none place-items-center bg-current/15 text-sm font-bold";
+          icon.textContent = type === "error" ? "!" : "✓";
+
+          const copy = document.createElement("span");
+          copy.className = "text-sm leading-6";
+          copy.textContent = message;
+
+          toast.append(icon, copy);
+          elements.toastRegion.append(toast);
+          requestAnimationFrame(() => toast.classList.add("is-visible"));
+
+          window.setTimeout(() => {
+            toast.classList.remove("is-visible");
+            window.setTimeout(() => toast.remove(), 200);
+          }, 3600);
+        }
+
+        function renderSkeleton(container, rows = 2) {
+          container.replaceChildren();
+          for (let index = 0; index < rows; index += 1) {
+            const row = document.createElement("div");
+            row.className = "skeleton-row";
+
+            const icon = document.createElement("span");
+            icon.className = "skeleton size-11 flex-none";
+
+            const copy = document.createElement("span");
+            copy.className = "skeleton-copy";
+
+            const name = document.createElement("span");
+            name.className = "skeleton mb-2 block h-3 w-2/3";
+
+            const meta = document.createElement("span");
+            meta.className = "skeleton block h-2 w-1/3";
+
+            copy.append(name, meta);
+            row.append(icon, copy);
+            container.append(row);
+          }
+        }
+
+        function createEmptyState(title, description, iconPath) {
+          const wrapper = document.createElement("div");
+          wrapper.className = "empty-state";
+
+          const content = document.createElement("div");
+          const icon = document.createElement("span");
+          icon.className = "empty-icon";
+          icon.append(createIcon(iconPath, 24));
+
+          const heading = document.createElement("strong");
+          heading.className = "mb-1 block text-sm text-base-content/75";
+          heading.textContent = title;
+
+          const copy = document.createElement("p");
+          copy.className = "mx-auto mb-0 max-w-xs text-xs leading-6";
+          copy.textContent = description;
+
+          content.append(icon, heading, copy);
+          wrapper.append(content);
+          return wrapper;
+        }
+
+        function createTaskIcon(isProcessing) {
+          const icon = document.createElement("span");
+          icon.className = `data-icon${isProcessing ? " is-processing" : ""}`;
+
+          if (isProcessing) {
+            const bars = document.createElement("span");
+            bars.className = "processing-bars flex items-center";
+            for (let index = 0; index < 4; index += 1) {
+              bars.append(document.createElement("span"));
+            }
+            icon.append(bars);
+          } else {
+            icon.append(createIcon("M12 7v5l3 2m6-2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z", 21));
+          }
+
+          return icon;
+        }
+
+        function renderTasks() {
+          const entries = [
+            ...(state.currentTask ? [{ task: state.currentTask, isProcessing: true }] : []),
+            ...state.tasks.map((task) => ({ task, isProcessing: false })),
+          ];
+          const processingCount = state.currentTask ? 1 : 0;
+
+          elements.queueCount.textContent = String(entries.length);
+          elements.queueMetric.textContent = String(entries.length);
+          elements.queueNote.textContent = processingCount
+            ? `正在处理 1 个任务，另有 ${state.tasks.length} 个任务等待。`
+            : state.tasks.length
+              ? `当前有 ${state.tasks.length} 个任务等待处理。`
+              : "提交音频后，任务会先进入队列等待处理。";
+          elements.queueContent.replaceChildren();
+
+          if (!entries.length) {
+            elements.queueContent.append(
+              createEmptyState(
+                "暂无待处理任务",
+                "上传音频后，可以在这里查看处理状态。",
+                "M12 7v5l3 2m6-2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z",
+              ),
+            );
+            return;
+          }
+
+          const list = document.createElement("ul");
+          list.className = "data-list";
+
+          entries.forEach(({ task, isProcessing }) => {
+            const row = document.createElement("li");
+            row.className = "data-row";
+
+            const copy = document.createElement("div");
+            copy.className = "data-copy";
+
+            const name = document.createElement("div");
+            name.className = "truncate-line text-sm font-semibold";
+            name.textContent = displayFilename(task.filename || "未命名音频");
+            name.title = name.textContent;
+
+            const meta = document.createElement("p");
+            meta.className = "mt-1 mb-0 text-xs text-base-content/45";
+            meta.textContent = `${task.model || "whisperx"} · ${isProcessing ? "正在识别与对齐" : "等待处理"}`;
+
+            const status = document.createElement("span");
+            status.className = `badge badge-sm flex-none ${isProcessing ? "badge-warning" : "badge-ghost"}`;
+            status.textContent = isProcessing ? "处理中" : "排队中";
+
+            copy.append(name, meta);
+            row.append(createTaskIcon(isProcessing), copy, status);
+            list.append(row);
+          });
+
+          elements.queueContent.append(list);
+        }
+
+        function renderResults() {
+          elements.resultCount.textContent = String(state.results.length);
+          elements.resultMetric.textContent = String(state.results.length);
+          elements.resultsContent.replaceChildren();
+
+          if (!state.results.length) {
+            elements.resultsContent.append(
+              createEmptyState(
+                "暂无已完成文件",
+                "转写完成后，结果会出现在这里并支持查看与下载。",
+                "M14 3v5a2 2 0 0 0 2 2h5M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-9l-5-7Z",
+              ),
+            );
+            return;
+          }
+
+          const list = document.createElement("ul");
+          list.className = "data-list";
+
+          state.results.forEach((result) => {
+            const visibleName = displayFilename(result.name || "result.json");
+            const row = document.createElement("li");
+            row.className = "data-row result-row";
+
+            const type = document.createElement("span");
+            type.className = "data-icon";
+            type.append(createIcon("M14 3v5a2 2 0 0 0 2 2h5M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-9l-5-7Z", 21));
+
+            const copy = document.createElement("div");
+            copy.className = "data-copy";
+
+            const name = document.createElement("div");
+            name.className = "truncate-line text-sm font-semibold";
+            name.textContent = visibleName;
+            name.title = visibleName;
+
+            const meta = document.createElement("p");
+            meta.className = "mt-1 mb-0 text-xs text-base-content/45";
+            meta.textContent = `${formatBytes(result.size)} · ${formatDate(result.modified_at)}`;
+
+            copy.append(name, meta);
+
+            const actions = document.createElement("div");
+            actions.className = "data-actions";
+
+            const previewButton = document.createElement("button");
+            previewButton.className = "btn btn-ghost btn-sm";
+            previewButton.type = "button";
+            previewButton.setAttribute("aria-label", `查看 ${visibleName}`);
+            previewButton.append(
+              createIcon("M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6S2.5 12 2.5 12Zm9.5 2.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z", 16),
+              document.createTextNode("查看"),
+            );
+            previewButton.addEventListener("click", () => openResult(result));
+
+            const downloadLink = document.createElement("a");
+            downloadLink.className = "btn btn-ghost btn-sm";
+            downloadLink.href = result.url;
+            downloadLink.download = visibleName;
+            downloadLink.setAttribute("aria-label", `下载 ${visibleName}`);
+            downloadLink.append(
+              createIcon("M12 4v11m0 0 4-4m-4 4-4-4M5 19h14", 16),
+              document.createTextNode("下载"),
+            );
+
+            actions.append(previewButton, downloadLink);
+            row.append(type, copy, actions);
+            list.append(row);
+          });
+
+          elements.resultsContent.append(list);
+        }
+
+        async function refreshData({ notify = false, initial = false } = {}) {
+          if (state.refreshing) {
+            return;
+          }
+
+          state.refreshing = true;
+          elements.refreshButton.disabled = true;
+          elements.refreshButton.classList.add("is-spinning");
+
+          if (initial) {
+            renderSkeleton(elements.queueContent, 2);
+            renderSkeleton(elements.resultsContent, 3);
+          }
+
+          const [currentTaskResult, tasksResult, resultsResult] = await Promise.allSettled([
+            apiRequest("/task"),
+            apiRequest("/tasks"),
+            apiRequest("/results"),
+          ]);
+
+          let successCount = 0;
+          const errors = [];
+
+          if (currentTaskResult.status === "fulfilled") {
+            state.currentTask = currentTaskResult.value || null;
+            successCount += 1;
+          } else {
+            errors.push(currentTaskResult.reason);
+          }
+
+          if (tasksResult.status === "fulfilled") {
+            state.tasks = Array.isArray(tasksResult.value) ? tasksResult.value : [];
+            successCount += 1;
+          } else {
+            errors.push(tasksResult.reason);
+          }
+
+          if (resultsResult.status === "fulfilled") {
+            state.results = Array.isArray(resultsResult.value) ? resultsResult.value : [];
+            successCount += 1;
+          } else {
+            errors.push(resultsResult.reason);
+          }
+
+          renderTasks();
+          renderResults();
+
+          if (successCount > 0) {
+            setConnectionStatus("online");
+            elements.lastUpdated.textContent = `最近更新：${new Intl.DateTimeFormat("zh-CN", {
+              hour: "2-digit",
+              minute: "2-digit",
+              second: "2-digit",
+            }).format(new Date())}`;
+            if (notify) {
+              showToast("任务和文件已更新");
+            }
+          } else {
+            setConnectionStatus("offline");
+            if (notify || initial) {
+              showToast(errors[0]?.message || "暂时无法获取任务数据", "error");
+            }
+          }
+
+          state.refreshing = false;
+          elements.refreshButton.disabled = false;
+          elements.refreshButton.classList.remove("is-spinning");
+        }
+
+        function clearSelectedFile() {
+          if (state.previewUrl) {
+            URL.revokeObjectURL(state.previewUrl);
+          }
+
+          state.selectedFile = null;
+          state.previewUrl = "";
+          elements.audioInput.value = "";
+          elements.audioPreview.removeAttribute("src");
+          elements.audioPreview.load();
+          elements.selectedFile.hidden = true;
+          elements.dropZone.hidden = false;
+          elements.uploadProgress.hidden = true;
+          updateProgress(0);
+          updateUploadButton();
+        }
+
+        function selectFile(file) {
+          if (!file) {
+            return;
+          }
+
+          const extension = getExtension(file.name);
+          if (!ALLOWED_EXTENSIONS.has(extension)) {
+            showToast("不支持该文件格式，请选择常见音频文件", "error");
+            elements.audioInput.value = "";
+            return;
+          }
+
+          if (state.previewUrl) {
+            URL.revokeObjectURL(state.previewUrl);
+          }
+
+          state.selectedFile = file;
+          state.previewUrl = URL.createObjectURL(file);
+          elements.selectedFileName.textContent = file.name;
+          elements.selectedFileName.title = file.name;
+          elements.selectedFileMeta.textContent = `${extension.slice(1).toUpperCase()} · ${formatBytes(file.size)}`;
+          elements.audioPreview.src = state.previewUrl;
+          elements.dropZone.hidden = true;
+          elements.selectedFile.hidden = false;
+          elements.uploadProgress.hidden = true;
+          updateProgress(0);
+          updateUploadButton();
+        }
+
+        function updateUploadButton() {
+          elements.uploadButton.disabled = Boolean(
+            state.uploading || (state.selectedFile && !state.sessionId),
+          );
+          elements.removeFileButton.disabled = state.uploading;
+
+          if (state.uploading) {
+            elements.uploadButtonLabel.textContent = "正在上传…";
+          } else if (state.selectedFile) {
+            elements.uploadButtonLabel.textContent = state.sessionId ? "开始转写" : "等待服务连接";
+          } else {
+            elements.uploadButtonLabel.textContent = "选择音频文件";
+          }
+        }
+
+        function updateProgress(percent) {
+          const value = Math.max(0, Math.min(100, Math.round(percent)));
+          elements.progressBar.value = value;
+          elements.progressValue.textContent = `${value}%`;
+        }
+
+        function normalizeUploadFile(file) {
+          const extension = getExtension(file.name);
+          if (file.type && file.type.startsWith("audio/")) {
+            return file;
+          }
+          return new Blob([file], { type: MIME_TYPES[extension] || "audio/mpeg" });
+        }
+
+        function parseUploadError(xhr) {
+          try {
+            const body = xhr.response || JSON.parse(xhr.responseText);
+            if (typeof body.detail === "string") {
+              return body.detail;
+            }
+          } catch {
+            // Fall through to the status-based message below.
+          }
+
+          if (xhr.status === 413) {
+            return "文件过大，服务无法接收";
+          }
+          if (xhr.status === 415) {
+            return "服务不支持该音频格式";
+          }
+          return xhr.status ? `上传失败（${xhr.status}）` : "上传失败，请检查网络连接";
+        }
+
+        async function uploadSelectedFile() {
+          if (!state.selectedFile || state.uploading) {
+            return;
+          }
+
+          try {
+            await ensureSession();
+          } catch (error) {
+            setConnectionStatus("offline");
+            showToast(error.message || "无法建立上传会话", "error");
+            return;
+          }
+
+          const originalName = state.selectedFile.name;
+          state.uploading = true;
+          elements.uploadProgress.hidden = false;
+          elements.progressLabel.textContent = "正在上传";
+          updateUploadButton();
+          updateProgress(0);
+
+          try {
+            await new Promise((resolve, reject) => {
+              const xhr = new XMLHttpRequest();
+              xhr.open("POST", "/task");
+              xhr.setRequestHeader("session", state.sessionId);
+              xhr.responseType = "json";
+
+              xhr.upload.addEventListener("progress", (event) => {
+                if (event.lengthComputable) {
+                  updateProgress((event.loaded / event.total) * 100);
+                }
+              });
+
+              xhr.addEventListener("load", () => {
+                if (xhr.status >= 200 && xhr.status < 300) {
+                  updateProgress(100);
+                  resolve(xhr.response);
+                } else {
+                  reject(new Error(parseUploadError(xhr)));
+                }
+              });
+              xhr.addEventListener("error", () => reject(new Error("上传失败，请检查网络连接")));
+              xhr.addEventListener("abort", () => reject(new Error("上传已取消")));
+
+              const formData = new FormData();
+              formData.append("file", normalizeUploadFile(state.selectedFile), originalName);
+              formData.append("model", "whisperx");
+              xhr.send(formData);
+            });
+
+            elements.progressLabel.textContent = "上传完成";
+            showToast(`“${originalName}”已加入转写队列`);
+            window.setTimeout(clearSelectedFile, 450);
+            await refreshData();
+          } catch (error) {
+            elements.progressLabel.textContent = "上传失败";
+            showToast(error.message || "上传失败，请稍后重试", "error");
+          } finally {
+            state.uploading = false;
+            updateUploadButton();
+          }
+        }
+
+        function showDialog() {
+          if (typeof elements.resultDialog.showModal === "function") {
+            if (!elements.resultDialog.open) {
+              elements.resultDialog.showModal();
+            }
+          } else {
+            elements.resultDialog.setAttribute("open", "");
+          }
+        }
+
+        function closeDialog() {
+          if (typeof elements.resultDialog.close === "function") {
+            elements.resultDialog.close();
+          } else {
+            elements.resultDialog.removeAttribute("open");
+          }
+        }
+
+        function renderResultPreview(data) {
+          const segments = Array.isArray(data?.segments) ? data.segments : [];
+          const segmentTexts = segments
+            .map((segment) => (typeof segment?.text === "string" ? segment.text : ""))
+            .filter(Boolean);
+          const fullText =
+            segmentTexts.join("").trim() ||
+            (typeof data?.text === "string" ? data.text.trim() : "");
+
+          state.previewText = fullText;
+          elements.copyResultButton.disabled = !fullText;
+          elements.dialogBody.replaceChildren();
+
+          if (!fullText && !segments.length) {
+            const raw = document.createElement("pre");
+            raw.className = "raw-result";
+            raw.textContent = JSON.stringify(data, null, 2);
+            elements.dialogBody.append(raw);
+            return;
+          }
+
+          if (fullText) {
+            const overview = document.createElement("section");
+            overview.className = "transcript-overview mb-6 p-4 sm:p-5";
+
+            const label = document.createElement("span");
+            label.className = "mb-3 block text-xs font-semibold tracking-wider text-base-content/45";
+            label.textContent = "完整文字";
+
+            const paragraph = document.createElement("p");
+            paragraph.className = "mb-0 whitespace-pre-wrap text-sm leading-8 sm:text-base";
+            paragraph.textContent = fullText;
+
+            overview.append(label, paragraph);
+            elements.dialogBody.append(overview);
+          }
+
+          if (segments.length) {
+            const label = document.createElement("span");
+            label.className = "mb-3 block text-xs font-semibold tracking-wider text-base-content/45";
+            label.textContent = "时间轴片段";
+
+            const list = document.createElement("ol");
+            list.className = "segment-list";
+
+            segments.forEach((segment) => {
+              const item = document.createElement("li");
+              item.className = "segment-item";
+
+              const time = document.createElement("span");
+              time.className = "segment-time";
+              time.textContent = `${formatTime(segment?.start)} — ${formatTime(segment?.end)}`;
+
+              const text = document.createElement("p");
+              text.className = "mb-0 text-sm leading-7";
+              text.textContent = typeof segment?.text === "string" ? segment.text.trim() : "";
+
+              item.append(time, text);
+              list.append(item);
+            });
+
+            elements.dialogBody.append(label, list);
+          }
+        }
+
+        async function openResult(result) {
+          const visibleName = displayFilename(result.name || "result.json");
+          elements.dialogTitle.textContent = visibleName;
+          elements.dialogMeta.textContent = `${formatBytes(result.size)} · ${formatDate(result.modified_at)}`;
+          elements.downloadResultLink.href = result.url;
+          elements.downloadResultLink.download = visibleName;
+          elements.copyResultButton.disabled = true;
+          state.previewText = "";
+
+          const loading = document.createElement("div");
+          loading.className = "grid min-h-64 place-items-center text-sm text-base-content/50";
+          const loadingContent = document.createElement("div");
+          loadingContent.className = "text-center";
+          const spinner = document.createElement("span");
+          spinner.className = "loading loading-spinner loading-md mb-3 block text-primary";
+          loadingContent.append(spinner, document.createTextNode("正在读取转写结果…"));
+          loading.append(loadingContent);
+          elements.dialogBody.replaceChildren(loading);
+          showDialog();
+
+          try {
+            const response = await fetch(result.url, { cache: "no-store" });
+            if (!response.ok) {
+              throw new Error(`读取结果失败（${response.status}）`);
+            }
+
+            const data = await response.json();
+            renderResultPreview(data);
+
+            const language = typeof data?.language === "string" ? data.language.toUpperCase() : "";
+            const segmentCount = Array.isArray(data?.segments) ? data.segments.length : 0;
+            const details = [
+              `${formatBytes(result.size)} · ${formatDate(result.modified_at)}`,
+              language ? `语言 ${language}` : "",
+              segmentCount ? `${segmentCount} 个片段` : "",
+            ].filter(Boolean);
+            elements.dialogMeta.textContent = details.join(" · ");
+          } catch (error) {
+            elements.dialogBody.replaceChildren(
+              createEmptyState(
+                "无法预览该文件",
+                error.message || "请下载文件后查看。",
+                "M12 9v4m0 4h.01M10.3 4.3 2.2 18a2 2 0 0 0 3.5 0L13.8 4.3a2 2 0 0 0-3.5 0Z",
+              ),
+            );
+          }
+        }
+
+        async function copyPreviewText() {
+          if (!state.previewText) {
+            return;
+          }
+
+          try {
+            if (navigator.clipboard && window.isSecureContext) {
+              await navigator.clipboard.writeText(state.previewText);
+            } else {
+              const textarea = document.createElement("textarea");
+              textarea.value = state.previewText;
+              textarea.style.position = "fixed";
+              textarea.style.opacity = "0";
+              document.body.append(textarea);
+              textarea.select();
+              document.execCommand("copy");
+              textarea.remove();
+            }
+            showToast("文字已复制到剪贴板");
+          } catch {
+            showToast("复制失败，请手动选择文字", "error");
+          }
+        }
+
+        async function reconnect() {
+          setConnectionStatus("connecting");
+          state.sessionId = "";
+          updateUploadButton();
+
+          try {
+            await ensureSession();
+            await refreshData({ notify: true });
+          } catch (error) {
+            setConnectionStatus("offline");
+            showToast(error.message || "无法连接服务", "error");
+          }
+        }
+
+        function bindEvents() {
+          elements.audioInput.addEventListener("change", (event) => {
+            selectFile(event.target.files?.[0]);
+          });
+
+          elements.dropZone.addEventListener("keydown", (event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              elements.audioInput.click();
+            }
+          });
+
+          ["dragenter", "dragover"].forEach((eventName) => {
+            elements.dropZone.addEventListener(eventName, (event) => {
+              event.preventDefault();
+              elements.dropZone.classList.add("is-dragging");
+            });
+          });
+
+          ["dragleave", "drop"].forEach((eventName) => {
+            elements.dropZone.addEventListener(eventName, (event) => {
+              event.preventDefault();
+              elements.dropZone.classList.remove("is-dragging");
+            });
+          });
+
+          elements.dropZone.addEventListener("drop", (event) => {
+            selectFile(event.dataTransfer?.files?.[0]);
+          });
+          elements.removeFileButton.addEventListener("click", clearSelectedFile);
+          elements.uploadButton.addEventListener("click", () => {
+            if (state.selectedFile) {
+              uploadSelectedFile();
+            } else {
+              elements.audioInput.click();
+            }
+          });
+          elements.refreshButton.addEventListener("click", () => refreshData({ notify: true }));
+          elements.connectionButton.addEventListener("click", reconnect);
+          elements.closeDialogButton.addEventListener("click", closeDialog);
+          elements.copyResultButton.addEventListener("click", copyPreviewText);
+
+          document.addEventListener("visibilitychange", () => {
+            if (!document.hidden) {
+              refreshData();
+            }
+          });
+
+          window.addEventListener("beforeunload", () => {
+            if (state.previewUrl) {
+              URL.revokeObjectURL(state.previewUrl);
+            }
+          });
+        }
+
+        async function initialize() {
+          bindEvents();
+          renderSkeleton(elements.queueContent, 2);
+          renderSkeleton(elements.resultsContent, 3);
+          setConnectionStatus("connecting");
+
+          try {
+            await ensureSession();
+            await refreshData({ initial: true });
+          } catch (error) {
+            setConnectionStatus("offline");
+            renderTasks();
+            renderResults();
+            showToast(error.message || "无法连接服务，请确认服务已启动", "error");
+          }
+
+          window.setInterval(() => {
+            if (!document.hidden) {
+              refreshData();
+            }
+          }, POLL_INTERVAL);
+        }
+
+        initialize();
+      })();
+    </script>
   </body>
 </html>
