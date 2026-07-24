@@ -4,12 +4,12 @@ class Task:
     def __init__(
         self,
         task_id: str,
-        filename: str,
         session_id: str,
+        filename: str,
     ):
         self.task_id = task_id
-        self.filename = filename
         self.session_id = session_id
+        self.filename = filename
 
     def to_dict(self) -> dict[str, str]:
         return {

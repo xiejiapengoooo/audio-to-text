@@ -1,12 +1,11 @@
-import asyncio
 from collections import deque
 from datetime import datetime, timezone
 import json
 import os
+import uuid
 from pathlib import Path
 from tempfile import NamedTemporaryFile
-import uuid
-from anyio import to_thread
+from anyio import Condition, to_thread
 from config import Settings
 from logger import get_logger
 from .task import Task
@@ -20,7 +19,7 @@ class TaskManager:
         self._settings = settings
         self._logger = get_logger("TaskManager")
         self._tasks: deque[Task] = deque()
-        self._condition = asyncio.Condition()
+        self._condition = Condition()
         self._tasks_file_path = settings.data_dir / "tasks.json"
 
     async def start(self) -> None:
@@ -37,8 +36,8 @@ class TaskManager:
 
             task = Task(
                 task_id=task_id,
-                filename=filename,
                 session_id=session_id,
+                filename=filename,
             )
             self._tasks.append(task)
             try:
