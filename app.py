@@ -1,4 +1,5 @@
 import uvicorn
+from anyio import create_task_group
 from pathlib import Path
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
@@ -22,15 +23,17 @@ def create_app() -> FastAPI:
         task_manager = TaskManager(
             settings=settings,
         )
-        await session_manager.start()
-        try:
-            await task_manager.start()
-            app.state.session_manager = session_manager
-            app.state.task_manager = task_manager
-            app.state.settings = settings
-            yield
-        finally:
-            await session_manager.close()
+        async with create_task_group() as task_group:
+              await session_manager.start(task_group)
+              await task_manager.start()
+
+              app.state.session_manager = session_manager
+              app.state.task_manager = task_manager
+              app.state.settings = settings
+
+              yield
+
+              task_group.cancel_scope.cancel()
 
     app = FastAPI(
         title=settings.app_name,
