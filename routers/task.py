@@ -1,9 +1,9 @@
 import uuid
 from pathlib import Path
 from tempfile import NamedTemporaryFile
-
 import anyio
 from fastapi import APIRouter, File, Form, Header, HTTPException, Request, UploadFile
+from constants import DEFAULT_MODEL, Model
 
 router = APIRouter(prefix="/task")
 
@@ -13,7 +13,7 @@ async def create_task(
     request: Request,
     session_id: str = Header(..., alias="session"),
     file: UploadFile = File(...),
-    model: str = Form("whisperx"),
+    model: Model = Form(DEFAULT_MODEL),
 ) -> str:
     temporary_path: Path | None = None
 
