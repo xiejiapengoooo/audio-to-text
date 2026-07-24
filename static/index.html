@@ -103,16 +103,6 @@
         box-shadow: 0 0 0 4px color-mix(in oklab, var(--color-error) 16%, transparent);
       }
 
-      .hero-title {
-        max-width: 720px;
-        text-wrap: balance;
-      }
-
-      .hero-copy {
-        max-width: 650px;
-        text-wrap: pretty;
-      }
-
       .workspace-grid {
         display: grid;
         grid-template-columns: minmax(330px, 0.78fr) minmax(0, 1.42fr);
@@ -497,7 +487,6 @@
           width: min(calc(100% - 24px), 1180px);
         }
 
-        .hero-copy,
         .selected-file-panel,
         .panel-body-note {
           overflow-wrap: anywhere;
@@ -571,22 +560,6 @@
   </head>
   <body class="text-base-content">
     <main class="app-shell min-h-screen py-10 sm:py-14">
-      <section class="mb-10 sm:mb-12" aria-labelledby="page-title">
-        <div class="badge badge-soft badge-primary mb-5 gap-2 px-3 py-3">
-          <span class="size-1.5 bg-primary" aria-hidden="true"></span>
-          WhisperX · Large V3
-        </div>
-        <h1
-          class="hero-title mb-5 text-4xl font-semibold leading-tight tracking-[-0.045em] sm:text-5xl lg:text-6xl"
-          id="page-title"
-        >
-          把声音，整理成<br class="hidden sm:block" />清晰可用的文字
-        </h1>
-        <p class="hero-copy mb-0 text-base leading-7 text-base-content/60 sm:text-lg sm:leading-8">
-          上传音频后自动进入转写队列，完成语音识别与时间轴对齐。结果可在线查看，也可以下载留存。
-        </p>
-      </section>
-
       <div class="workspace-grid">
         <section class="card upload-card border border-base-300 bg-base-100 shadow-sm" aria-labelledby="upload-title">
           <div class="card-body gap-5 p-5 sm:p-6">
@@ -595,7 +568,6 @@
                 <h2 class="card-title text-xl tracking-tight" id="upload-title">上传音频</h2>
                 <p class="mt-1 text-sm leading-6 text-base-content/55">选择一个文件开始转写</p>
               </div>
-              <span class="badge badge-outline badge-sm whitespace-nowrap">单文件</span>
             </div>
 
             <label
@@ -668,17 +640,13 @@
                 <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8" />
                 <path d="M12 11v5m0-8h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
               </svg>
-              <span>支持 AAC、FLAC、M4A、MP3、OGG、OPUS、WAV，文件按当前浏览器会话隔离。</span>
+              <span>支持 AAC、FLAC、M4A、MP3、OGG、OPUS、WAV。</span>
             </div>
           </div>
         </section>
 
-        <section class="min-w-0" aria-labelledby="workspace-title">
-          <div class="mb-5 flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <h2 class="text-2xl font-semibold tracking-tight" id="workspace-title">处理中心</h2>
-              <p class="mt-1 mb-0 text-sm text-base-content/50" id="lastUpdated">任务和文件会自动更新</p>
-            </div>
+        <section class="min-w-0" aria-label="转写任务与文件">
+          <div class="mb-5 flex justify-end">
             <button class="btn btn-outline btn-sm refresh-button" id="refreshButton" type="button">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <path d="M20 6v5h-5M4 18v-5h5M18.5 9a7 7 0 0 0-11.7-2.6L4 9m16 6-2.8 2.6A7 7 0 0 1 5.5 15" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" />
@@ -731,7 +699,6 @@
                   <h3 class="font-semibold tracking-tight" id="results-title">已完成文件</h3>
                   <span class="badge badge-primary badge-sm" id="resultCount">0</span>
                 </div>
-                <span class="badge badge-ghost badge-sm">JSON</span>
               </div>
               <div id="resultsContent" aria-live="polite"></div>
             </section>
@@ -771,7 +738,7 @@
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <path d="M12 4v11m0 0 4-4m-4 4-4-4M5 19h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
               </svg>
-              下载 JSON
+              下载文件
             </a>
           </div>
         </div>
@@ -839,7 +806,6 @@
           uploadButton: document.querySelector("#uploadButton"),
           uploadButtonLabel: document.querySelector("#uploadButtonLabel"),
           refreshButton: document.querySelector("#refreshButton"),
-          lastUpdated: document.querySelector("#lastUpdated"),
           queueCount: document.querySelector("#queueCount"),
           queueNote: document.querySelector("#queueNote"),
           resultCount: document.querySelector("#resultCount"),
@@ -1298,11 +1264,6 @@
 
           if (successCount > 0) {
             setConnectionStatus("online");
-            elements.lastUpdated.textContent = `最近更新：${new Intl.DateTimeFormat("zh-CN", {
-              hour: "2-digit",
-              minute: "2-digit",
-              second: "2-digit",
-            }).format(new Date())}`;
             if (notify) {
               showToast("任务和文件已更新");
             }
