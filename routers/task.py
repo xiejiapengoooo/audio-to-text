@@ -1,28 +1,32 @@
-import uuid
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 import anyio
-from fastapi import APIRouter, File, Form, Header, HTTPException, Request, UploadFile
+from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 from constants import DEFAULT_MODEL, Model
+from routers.dependencies import CurrentSession
 
-router = APIRouter(prefix="/task")
+
+router = APIRouter()
 
 
-@router.post("/create")
+@router.get("/tasks")
+async def get_tasks(
+    request: Request,
+    session: CurrentSession,
+):
+    pass
+
+
+@router.post("/task")
 async def create_task(
     request: Request,
-    session_id: str = Header(..., alias="session"),
+    session: CurrentSession,
     file: UploadFile = File(...),
     model: Model = Form(DEFAULT_MODEL),
 ) -> str:
     temporary_path: Path | None = None
 
     try:
-        session_manager = request.app.state.session_manager
-        session = await session_manager.get(session_id)
-        if session is None:
-            raise HTTPException(status_code=404, detail="Session not found")
-
         filename = Path((file.filename or "").replace("\\", "/")).name
         if not filename:
             raise HTTPException(status_code=400, detail="Filename is required")
@@ -50,7 +54,7 @@ async def create_task(
         uploading_dir = waiting_dir / ".uploading"
         uploading_dir.mkdir(parents=True, exist_ok=True)
 
-        stored_filename = f"{uuid.uuid4()}_{filename}"
+        stored_filename = f"{session.session_id}_{filename}"
         audio_path = waiting_dir / stored_filename
         with NamedTemporaryFile(
             dir=uploading_dir,
