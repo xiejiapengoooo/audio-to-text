@@ -68,6 +68,7 @@ def create_app() -> FastAPI:
     app.include_router(task_router)
     app.include_router(result_router)
     app.mount("/", StaticFiles(directory=Path(__file__).resolve().parent / "static", html=True))
+    app.mount("/output", StaticFiles(directory=settings.output_dir))
 
     return app
 
