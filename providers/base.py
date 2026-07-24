@@ -1,14 +1,20 @@
+from abc import ABC, abstractmethod
 from collections.abc import Callable, Iterable
 from multiprocessing.context import SpawnContext
 from typing import Any
 import torch
 from config import Settings
 from logger import get_logger
+from tasks.task import Task
 
-class BaseProvider:
+class BaseProvider(ABC):
     def __init__(self, provider_name: str, settings: Settings):
         self._settings = settings
         self._logger = get_logger(provider_name)
+
+    @abstractmethod
+    def run(self, task: Task) -> None:
+        pass
 
     def _get_waiting_dir(self):
         self._settings.waiting_dir.mkdir(parents=True, exist_ok=True)

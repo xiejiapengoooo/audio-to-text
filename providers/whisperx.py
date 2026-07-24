@@ -89,7 +89,7 @@ class WhisperXProvider(BaseProvider):
         writer(result, str(waiting_audio), {})
         self._logger.info("result written")
 
-    def run(self, task: Task):
+    def run(self, task: Task) -> None:
         waiting_audio = self._get_waiting_file(task.filename)
         if not waiting_audio.is_file():
             raise FileNotFoundError(f"Task audio not found: {task.filename}")
