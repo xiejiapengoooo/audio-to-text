@@ -46,7 +46,7 @@ class TaskManager:
                 self._tasks.pop()
                 raise
 
-            self._condition.notify()
+            self._condition.notify_all()
 
         return task
 

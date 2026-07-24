@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 import uuid
-from anyio import Event, Lock, fail_after, sleep, to_thread
+from anyio import Condition, fail_after, sleep, to_thread
 from anyio.abc import TaskGroup
 from config import Settings
 from logger import get_logger
@@ -19,12 +19,11 @@ class SessionManager:
         self._settings = settings
         self._logger = get_logger("SessionManager")
         self._sessions: dict[str, Session] = {}
-        self._lock = Lock()
-        self._cleanup_event = Event()
+        self._condition = Condition()
         self._sessions_file_path = settings.data_dir / "sessions.json"
 
     async def start(self, task_group: TaskGroup) -> None:
-        async with self._lock:
+        async with self._condition:
             self._load()
             await self._remove_expired()
             task_group.start_soon(
@@ -33,7 +32,7 @@ class SessionManager:
             )
 
     async def create(self, session_id: str | None = None) -> Session:
-        async with self._lock:
+        async with self._condition:
             now = datetime.now(timezone.utc)
             existing_session = (
                 self._sessions.get(session_id) if session_id is not None else None
@@ -66,12 +65,12 @@ class SessionManager:
                         self._sessions[existing_session.session_id] = existing_session
                     raise
 
-        self._cleanup_event.set()
+            self._condition.notify_all()
 
         return session
 
     async def get(self, session_id: str) -> Session | None:
-        async with self._lock:
+        async with self._condition:
             session = self._sessions.get(session_id)
             if session is None:
                 return None
@@ -84,13 +83,13 @@ class SessionManager:
                 except Exception:
                     self._sessions[session_id] = session
                     raise
-                self._cleanup_event.set()
+                self._condition.notify_all()
                 return None
 
             return session
 
     async def remove(self, session_id: str) -> Session | None:
-        async with self._lock:
+        async with self._condition:
             session = self._sessions.pop(session_id, None)
             if session is not None:
                 try:
@@ -98,9 +97,7 @@ class SessionManager:
                 except Exception:
                     self._sessions[session_id] = session
                     raise
-
-        if session is not None:
-            self._cleanup_event.set()
+                self._condition.notify_all()
         return session
 
     def _load(self) -> None:
@@ -177,30 +174,27 @@ class SessionManager:
 
     async def _cleanup_expired(self) -> None:
         while True:
-            cleanup_event = Event()
-            self._cleanup_event = cleanup_event
-            async with self._lock:
-                if self._sessions:
-                    next_expiration = min(
-                        session.expires_at for session in self._sessions.values()
-                    )
-                    delay = max(
-                        0.0,
-                        (next_expiration - datetime.now(timezone.utc)).total_seconds(),
-                    )
-                else:
-                    delay = None
-
-            if delay is None:
-                await cleanup_event.wait()
-                continue
-
             try:
-                with fail_after(delay):
-                    await cleanup_event.wait()
+                async with self._condition:
+                    if self._sessions:
+                        next_expiration = min(
+                            session.expires_at for session in self._sessions.values()
+                        )
+                        delay = max(
+                            0.0,
+                            (
+                                next_expiration - datetime.now(timezone.utc)
+                            ).total_seconds(),
+                        )
+                    else:
+                        await self._condition.wait()
+                        continue
+
+                    with fail_after(delay):
+                        await self._condition.wait()
             except TimeoutError:
                 try:
-                    async with self._lock:
+                    async with self._condition:
                         await self._remove_expired()
                 except Exception:
                     self._logger.exception("Failed to clean up expired sessions")
