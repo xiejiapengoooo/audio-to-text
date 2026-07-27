@@ -1467,9 +1467,12 @@ button, input {
   }
 }
 .metric-value {
+  --tw-font-weight: var(--font-weight-semibold);
+  font-weight: var(--font-weight-semibold);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-size: 16px;
 }
 .content-panel {
   overflow: hidden;
@@ -1718,9 +1721,6 @@ button, input {
   }
   .metric-card .metric-label {
     margin-bottom: 0;
-  }
-  .metric-card .metric-value {
-    font-size: 18px;
   }
   .data-row {
     align-items: flex-start;

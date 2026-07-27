@@ -209,9 +209,11 @@ input {
 }
 
 .metric-value {
+  @apply font-semibold;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-size: 16px;
 }
 
 .content-panel {
@@ -476,10 +478,6 @@ input {
 
   .metric-card .metric-label {
     margin-bottom: 0;
-  }
-
-  .metric-card .metric-value {
-    font-size: 18px;
   }
 
   .data-row {
