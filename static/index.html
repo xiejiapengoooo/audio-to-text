@@ -1,10 +1,10 @@
 <!doctype html>
-<html lang="zh-CN" data-theme="olive-sage">
+<html lang="en" data-theme="olive-sage">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#66785f" />
-    <title>音频转文字</title>
+    <title>Audio to Text</title>
     <link
       href="./main.css"
       rel="stylesheet"
@@ -18,8 +18,8 @@
           <div class="card-body gap-5 p-5 sm:p-6">
             <div class="flex items-start justify-between gap-4">
               <div>
-                <h2 class="card-title text-xl tracking-tight" id="upload-title">上传音频</h2>
-                <p class="mt-1 text-sm leading-6 text-base-content/55">选择一个文件开始转写</p>
+                <h2 class="card-title text-xl tracking-tight" id="upload-title">Upload Audio</h2>
+                <p class="mt-1 text-sm leading-6 text-base-content/55">Select a file to start transcribing</p>
               </div>
             </div>
 
@@ -42,8 +42,8 @@
                     <path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
                   </svg>
                 </span>
-                <strong class="mb-2 block text-base">拖放音频到这里</strong>
-                <span class="block text-sm leading-6 text-base-content/50">或点击浏览本地文件</span>
+                <strong class="mb-2 block text-base">Drop audio here</strong>
+                <span class="block text-sm leading-6 text-base-content/50">or click to browse your files</span>
               </span>
             </label>
 
@@ -58,7 +58,7 @@
                   <div class="truncate-line text-sm font-semibold" id="selectedFileName"></div>
                   <p class="mt-1 mb-0 text-xs text-base-content/50" id="selectedFileMeta"></p>
                 </div>
-                <button class="btn btn-ghost btn-sm btn-square" id="removeFileButton" type="button" aria-label="移除所选文件">
+                <button class="btn btn-ghost btn-sm btn-square" id="removeFileButton" type="button" aria-label="Remove selected file">
                   <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                     <path d="m6 6 12 12M18 6 6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
                   </svg>
@@ -69,7 +69,7 @@
 
             <div id="uploadProgress" hidden>
               <div class="mb-2 flex items-center justify-between text-xs text-base-content/55">
-                <span id="progressLabel">正在上传</span>
+                <span id="progressLabel">Uploading</span>
                 <span class="font-medium tabular-nums" id="progressValue">0%</span>
               </div>
               <progress
@@ -77,7 +77,7 @@
                 id="progressBar"
                 value="0"
                 max="100"
-                aria-label="上传进度"
+                aria-label="Upload progress"
               ></progress>
             </div>
 
@@ -85,7 +85,7 @@
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <path d="M12 6v12M6 12h12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" />
               </svg>
-              <span id="uploadButtonLabel">选择音频文件</span>
+              <span id="uploadButtonLabel">Choose Audio File</span>
             </button>
 
             <div class="flex gap-2 bg-base-200 p-3 text-xs leading-5 text-base-content/55">
@@ -93,33 +93,33 @@
                 <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8" />
                 <path d="M12 11v5m0-8h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
               </svg>
-              <span>支持 AAC、FLAC、M4A、MP3、OGG、OPUS、WAV。</span>
+              <span>Supports AAC, FLAC, M4A, MP3, OGG, OPUS, and WAV.</span>
             </div>
           </div>
         </section>
 
-        <section class="min-w-0" aria-label="转写任务与文件">
-          <div class="metric-grid mb-5" aria-label="转写概览">
+        <section class="min-w-0" aria-label="Transcription tasks and files">
+          <div class="metric-grid mb-5" aria-label="Transcription overview">
             <button
               class="metric-card metric-button p-4"
               id="connectionButton"
               type="button"
               data-status="connecting"
-              title="点击重新连接"
+              title="Click to reconnect"
             >
               <div class="metric-label mb-2 flex items-center gap-2 text-base-content/50">
                 <span class="connection-dot" aria-hidden="true"></span>
-                服务状态
+                Service Status
               </div>
-              <div class="metric-value tracking-tight" id="serviceMetric">连接中</div>
-              <span class="sr-only" id="connectionLabel">正在连接</span>
+              <div class="metric-value tracking-tight" id="serviceMetric">Connecting</div>
+              <span class="sr-only" id="connectionLabel">Connecting to service</span>
             </button>
             <div class="metric-card p-4">
-              <div class="metric-label mb-2 text-base-content/50">待处理任务</div>
+              <div class="metric-label mb-2 text-base-content/50">Pending Tasks</div>
               <div class="metric-value text-xl tracking-tight" id="queueMetric">—</div>
             </div>
             <div class="metric-card p-4">
-              <div class="metric-label mb-2 text-base-content/50">已完成文件</div>
+              <div class="metric-label mb-2 text-base-content/50">Completed Files</div>
               <div class="metric-value text-xl tracking-tight" id="resultMetric">—</div>
             </div>
           </div>
@@ -128,19 +128,19 @@
             <section class="content-panel" aria-labelledby="queue-title">
               <div class="panel-header">
                 <div class="flex items-center gap-2">
-                  <h3 class="font-semibold tracking-tight" id="queue-title">待处理任务</h3>
+                  <h3 class="font-semibold tracking-tight" id="queue-title">Pending Tasks</h3>
                   <span class="badge badge-primary badge-sm" id="queueCount">0</span>
                 </div>
-                <span class="text-xs text-base-content/45">按提交顺序处理</span>
+                <span class="text-xs text-base-content/45">Processed in submission order</span>
               </div>
-              <div class="panel-body-note" id="queueNote">正在读取任务状态…</div>
+              <div class="panel-body-note" id="queueNote">Loading task status…</div>
               <div id="queueContent" aria-live="polite"></div>
             </section>
 
             <section class="content-panel" aria-labelledby="results-title">
               <div class="panel-header">
                 <div class="flex items-center gap-2">
-                  <h3 class="font-semibold tracking-tight" id="results-title">已完成文件</h3>
+                  <h3 class="font-semibold tracking-tight" id="results-title">Completed Files</h3>
                   <span class="badge badge-primary badge-sm" id="resultCount">0</span>
                 </div>
               </div>
@@ -158,10 +158,10 @@
         <div class="dialog-layout">
           <div class="flex items-start justify-between gap-4 border-b border-base-300 px-5 py-5 sm:px-6">
             <div class="min-w-0">
-              <h2 class="truncate-line text-lg font-semibold tracking-tight" id="dialogTitle">转写结果</h2>
+              <h2 class="truncate-line text-lg font-semibold tracking-tight" id="dialogTitle">Transcription Result</h2>
               <p class="mt-1 mb-0 text-xs text-base-content/50" id="dialogMeta"></p>
             </div>
-            <button class="btn btn-ghost btn-sm btn-square flex-none" id="closeDialogButton" type="button" aria-label="关闭结果预览">
+            <button class="btn btn-ghost btn-sm btn-square flex-none" id="closeDialogButton" type="button" aria-label="Close result preview">
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <path d="m6 6 12 12M18 6 6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
               </svg>
@@ -176,19 +176,19 @@
                 <rect x="8" y="8" width="11" height="11" rx="2" stroke="currentColor" stroke-width="1.8" />
                 <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" stroke="currentColor" stroke-width="1.8" />
               </svg>
-              复制文字
+              Copy Text
             </button>
             <a class="btn btn-primary btn-sm" id="downloadResultLink" href="#" download>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <path d="M12 4v11m0 0 4-4m-4 4-4-4M5 19h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
               </svg>
-              下载文件
+              Download File
             </a>
           </div>
         </div>
       </div>
       <form method="dialog" class="modal-backdrop">
-        <button aria-label="关闭结果预览">关闭</button>
+        <button aria-label="Close result preview">Close</button>
       </form>
     </dialog>
 
@@ -222,11 +222,11 @@
           warning: "M12 9v4m0 4h.01M10.3 4.3 2.2 18a2 2 0 0 0 1.7 3h16.2a2 2 0 0 0 1.7-3L13.7 4.3a2 2 0 0 0-3.4 0Z",
         };
         const CONNECTION_COPY = {
-          connecting: { label: "正在连接", metric: "连接中" },
-          online: { label: "服务在线", metric: "运行正常" },
-          offline: { label: "连接失败", metric: "暂时离线" },
+          connecting: { label: "Connecting to service", metric: "Connecting" },
+          online: { label: "Service online", metric: "Operational" },
+          offline: { label: "Connection failed", metric: "Offline" },
         };
-        const DATE_FORMATTER = new Intl.DateTimeFormat("zh-CN", {
+        const DATE_FORMATTER = new Intl.DateTimeFormat("en-US", {
           month: "short",
           day: "numeric",
           hour: "2-digit",
@@ -295,7 +295,7 @@
           try {
             window.localStorage.setItem(SESSION_KEY, sessionId);
           } catch {
-            // 隐私模式下 localStorage 可能不可用，不影响当前页面会话。
+            // localStorage may be unavailable in private browsing mode.
           }
         }
 
@@ -320,13 +320,13 @@
                 .map((item) => (typeof item?.msg === "string" ? item.msg : ""))
                 .filter(Boolean);
               if (messages.length) {
-                return messages.join("；");
+                return messages.join("; ");
               }
             }
           } catch {
-            // 非 JSON 错误响应使用状态码提示。
+            // Fall back to the status code for non-JSON error responses.
           }
-          return `请求失败（${response.status}）`;
+          return `Request failed (${response.status})`;
         }
 
         function setConnectionStatus(status) {
@@ -365,7 +365,7 @@
 
           const sessionId = await response.json();
           if (typeof sessionId !== "string" || !sessionId) {
-            throw createRequestError("服务返回了无效会话", response.status);
+            throw createRequestError("The service returned an invalid session", response.status);
           }
 
           if (previousSession && previousSession !== sessionId) {
@@ -452,7 +452,7 @@
 
         function formatDate(timestampSeconds) {
           const date = new Date(Number(timestampSeconds) * 1000);
-          return Number.isNaN(date.getTime()) ? "时间未知" : DATE_FORMATTER.format(date);
+          return Number.isNaN(date.getTime()) ? "Unknown date" : DATE_FORMATTER.format(date);
         }
 
         function formatTime(seconds) {
@@ -580,20 +580,20 @@
           elements.queueMetric.textContent = String(entries.length);
           if (state.currentTask) {
             elements.queueNote.textContent = state.tasks.length
-              ? `正在处理 1 个任务，另有 ${state.tasks.length} 个任务等待。`
-              : "正在处理 1 个任务。";
+              ? `Processing 1 task, with ${state.tasks.length} more waiting.`
+              : "Processing 1 task.";
           } else if (state.tasks.length) {
-            elements.queueNote.textContent = `当前有 ${state.tasks.length} 个任务等待处理。`;
+            elements.queueNote.textContent = `${state.tasks.length} ${state.tasks.length === 1 ? "task is" : "tasks are"} waiting to be processed.`;
           } else {
-            elements.queueNote.textContent = "提交音频后，任务会先进入队列等待处理。";
+            elements.queueNote.textContent = "Submitted audio will appear here while it waits to be processed.";
           }
 
           elements.queueContent.replaceChildren();
           if (!entries.length) {
             elements.queueContent.append(
               createEmptyState(
-                "暂无待处理任务",
-                "上传音频后，可以在这里查看处理状态。",
+                "No pending tasks",
+                "Upload audio to track its processing status here.",
                 ICONS.clock,
               ),
             );
@@ -611,16 +611,16 @@
 
             const name = document.createElement("div");
             name.className = "truncate-line text-sm font-semibold";
-            name.textContent = displayFilename(task.filename || "未命名音频");
+            name.textContent = displayFilename(task.filename || "Untitled audio");
             name.title = name.textContent;
 
             const meta = document.createElement("p");
             meta.className = "mt-1 mb-0 text-xs text-base-content/45";
-            meta.textContent = `${task.model || DEFAULT_MODEL} · ${isProcessing ? "正在识别与对齐" : "等待处理"}`;
+            meta.textContent = `${task.model || DEFAULT_MODEL} · ${isProcessing ? "Transcribing and aligning" : "Waiting"}`;
 
             const status = document.createElement("span");
             status.className = `badge badge-sm flex-none ${isProcessing ? "badge-warning" : "badge-ghost"}`;
-            status.textContent = isProcessing ? "处理中" : "排队中";
+            status.textContent = isProcessing ? "Processing" : "Queued";
 
             copy.append(name, meta);
             row.append(createTaskIcon(isProcessing), copy, status);
@@ -637,8 +637,8 @@
           if (!state.results.length) {
             elements.resultsContent.append(
               createEmptyState(
-                "暂无已完成文件",
-                "转写完成后，结果会出现在这里并支持查看与下载。",
+                "No completed files",
+                "Completed transcriptions will appear here for viewing and download.",
                 ICONS.file,
               ),
             );
@@ -675,10 +675,10 @@
             const previewButton = document.createElement("button");
             previewButton.className = "btn btn-ghost btn-sm";
             previewButton.type = "button";
-            previewButton.setAttribute("aria-label", `查看 ${visibleName}`);
+            previewButton.setAttribute("aria-label", `View ${visibleName}`);
             previewButton.append(
               createIcon(ICONS.preview, 16),
-              document.createTextNode("查看"),
+              document.createTextNode("View"),
             );
             previewButton.addEventListener("click", () => {
               void openResult(result);
@@ -688,10 +688,10 @@
             downloadLink.className = "btn btn-ghost btn-sm";
             downloadLink.href = result.url;
             downloadLink.download = visibleName;
-            downloadLink.setAttribute("aria-label", `下载 ${visibleName}`);
+            downloadLink.setAttribute("aria-label", `Download ${visibleName}`);
             downloadLink.append(
               createIcon(ICONS.download, 16),
-              document.createTextNode("下载"),
+              document.createTextNode("Download"),
             );
 
             actions.append(previewButton, downloadLink);
@@ -742,7 +742,7 @@
           if (successCount) {
             setConnectionStatus("online");
             if (notify) {
-              showToast("任务和文件已更新");
+              showToast("Tasks and files updated");
             }
             return;
           }
@@ -750,7 +750,7 @@
           setConnectionStatus("offline");
           if (reportError) {
             showToast(
-              getErrorMessage(errors[0], "暂时无法获取任务数据"),
+              getErrorMessage(errors[0], "Unable to load task data"),
               "error",
             );
           }
@@ -778,7 +778,7 @@
             try {
               await currentRefresh;
             } catch {
-              // 后续刷新会重新获取完整状态。
+              // The next refresh will retrieve the complete state.
             }
           }
           return refreshData(options);
@@ -812,7 +812,7 @@
           const extension = getExtension(file.name);
           if (!AUDIO_MIME_TYPES[extension]) {
             elements.audioInput.value = "";
-            showToast("不支持该文件格式，请选择常见音频文件", "error");
+            showToast("Unsupported file type. Please choose a supported audio file.", "error");
             return;
           }
 
@@ -840,15 +840,15 @@
           elements.dropZone.setAttribute("aria-disabled", String(state.isUploading));
 
           if (state.isUploading) {
-            elements.uploadButtonLabel.textContent = "正在上传…";
+            elements.uploadButtonLabel.textContent = "Uploading…";
           } else if (state.isReconnecting && state.selectedFile) {
-            elements.uploadButtonLabel.textContent = "等待服务连接";
+            elements.uploadButtonLabel.textContent = "Waiting for service";
           } else if (state.selectedFile) {
             elements.uploadButtonLabel.textContent = state.sessionId
-              ? "开始转写"
-              : "等待服务连接";
+              ? "Start Transcription"
+              : "Waiting for service";
           } else {
-            elements.uploadButtonLabel.textContent = "选择音频文件";
+            elements.uploadButtonLabel.textContent = "Choose Audio File";
           }
         }
 
@@ -877,22 +877,22 @@
                 .map((item) => (typeof item?.msg === "string" ? item.msg : ""))
                 .filter(Boolean);
               if (messages.length) {
-                return messages.join("；");
+                return messages.join("; ");
               }
             }
           } catch {
-            // 非 JSON 错误响应使用状态码提示。
+            // Fall back to the status code for non-JSON error responses.
           }
 
           if (xhr.status === 413) {
-            return "文件过大，服务无法接收";
+            return "The file is too large for the service";
           }
           if (xhr.status === 415) {
-            return "服务不支持该音频格式";
+            return "The service does not support this audio format";
           }
           return xhr.status
-            ? `上传失败（${xhr.status}）`
-            : "上传失败，请检查网络连接";
+            ? `Upload failed (${xhr.status})`
+            : "Upload failed. Check your network connection.";
         }
 
         function sendTaskUpload(file, sessionId) {
@@ -916,10 +916,10 @@
               reject(createRequestError(parseUploadError(xhr), xhr.status));
             });
             xhr.addEventListener("error", () => {
-              reject(createRequestError("上传失败，请检查网络连接"));
+              reject(createRequestError("Upload failed. Check your network connection."));
             });
             xhr.addEventListener("abort", () => {
-              reject(createRequestError("上传已取消"));
+              reject(createRequestError("Upload canceled"));
             });
 
             const formData = new FormData();
@@ -936,7 +936,7 @@
           } catch (error) {
             if (error?.status === 404 && allowSessionRetry) {
               invalidateSession(sessionId);
-              elements.progressLabel.textContent = "会话已更新，正在重新上传";
+              elements.progressLabel.textContent = "Session refreshed. Retrying upload";
               updateProgress(0);
               return submitTask(file, false);
             }
@@ -952,7 +952,7 @@
 
           state.isUploading = true;
           elements.uploadProgress.hidden = false;
-          elements.progressLabel.textContent = "正在上传";
+          elements.progressLabel.textContent = "Uploading";
           updateProgress(0);
           updateControls();
 
@@ -962,15 +962,15 @@
             if (!state.sessionId || !error?.status || error.status >= 500) {
               setConnectionStatus("offline");
             }
-            elements.progressLabel.textContent = "上传失败";
-            showToast(getErrorMessage(error, "上传失败，请稍后重试"), "error");
+            elements.progressLabel.textContent = "Upload failed";
+            showToast(getErrorMessage(error, "Upload failed. Please try again later."), "error");
             return;
           } finally {
             state.isUploading = false;
             updateControls();
           }
 
-          showToast(`“${file.name}”已加入转写队列`);
+          showToast(`"${file.name}" was added to the transcription queue`);
           clearSelectedFile();
           await refreshAfterCurrentRequest();
         }
@@ -1032,7 +1032,7 @@
 
             const label = document.createElement("span");
             label.className = "mb-3 block text-xs font-semibold tracking-wider text-base-content/45";
-            label.textContent = "完整文字";
+            label.textContent = "Full Transcript";
 
             const paragraph = document.createElement("p");
             paragraph.className = "mb-0 whitespace-pre-wrap text-sm leading-8 sm:text-base";
@@ -1045,7 +1045,7 @@
           if (segments.length) {
             const label = document.createElement("span");
             label.className = "mb-3 block text-xs font-semibold tracking-wider text-base-content/45";
-            label.textContent = "时间轴片段";
+            label.textContent = "Timeline Segments";
 
             const list = document.createElement("ol");
             list.className = "segment-list";
@@ -1077,7 +1077,7 @@
 
           const spinner = document.createElement("span");
           spinner.className = "loading loading-spinner loading-md mb-3 block text-primary";
-          content.append(spinner, document.createTextNode("正在读取转写结果…"));
+          content.append(spinner, document.createTextNode("Loading transcription result…"));
           loading.append(content);
           elements.dialogBody.replaceChildren(loading);
         }
@@ -1104,7 +1104,7 @@
               signal: controller.signal,
             });
             if (!response.ok) {
-              throw createRequestError(`读取结果失败（${response.status}）`, response.status);
+              throw createRequestError(`Failed to load result (${response.status})`, response.status);
             }
 
             const data = await response.json();
@@ -1119,8 +1119,8 @@
             const segmentCount = Array.isArray(data?.segments) ? data.segments.length : 0;
             elements.dialogMeta.textContent = [
               baseMeta,
-              language ? `语言 ${language}` : "",
-              segmentCount ? `${segmentCount} 个片段` : "",
+              language ? `Language ${language}` : "",
+              segmentCount ? `${segmentCount} ${segmentCount === 1 ? "segment" : "segments"}` : "",
             ].filter(Boolean).join(" · ");
           } catch (error) {
             if (error?.name === "AbortError" || state.previewController !== controller) {
@@ -1128,8 +1128,8 @@
             }
             elements.dialogBody.replaceChildren(
               createEmptyState(
-                "无法预览该文件",
-                getErrorMessage(error, "请下载文件后查看。"),
+                "Unable to preview this file",
+                getErrorMessage(error, "Download the file to view it."),
                 ICONS.warning,
               ),
             );
@@ -1162,9 +1162,9 @@
                 throw new Error("Copy command failed");
               }
             }
-            showToast("文字已复制到剪贴板");
+            showToast("Text copied to clipboard");
           } catch {
-            showToast("复制失败，请手动选择文字", "error");
+            showToast("Copy failed. Please select and copy the text manually.", "error");
           }
         }
 
@@ -1180,7 +1180,7 @@
             await refreshAfterCurrentRequest({ notify: true, reportError: true });
           } catch (error) {
             setConnectionStatus("offline");
-            showToast(getErrorMessage(error, "无法连接服务"), "error");
+            showToast(getErrorMessage(error, "Unable to connect to the service"), "error");
           } finally {
             state.isReconnecting = false;
             updateControls();
@@ -1267,7 +1267,7 @@
             renderTasks();
             renderResults();
             showToast(
-              getErrorMessage(error, "无法连接服务，请确认服务已启动"),
+              getErrorMessage(error, "Unable to connect to the service. Make sure it is running."),
               "error",
             );
           }
