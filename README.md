@@ -12,3 +12,4 @@ pinned: false
 
 - [ ] Improve the frontend styling, including the page background and overall visual design.
 - [ ] Add support for large audio files.
+- [ ] Add support for deleting files.
