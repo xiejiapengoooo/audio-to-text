@@ -107,7 +107,7 @@
               data-status="connecting"
               title="点击重新连接"
             >
-              <div class="metric-label mb-2 flex items-center gap-2 text-xs text-base-content/50">
+              <div class="metric-label mb-2 flex items-center gap-2 text-base-content/50">
                 <span class="connection-dot" aria-hidden="true"></span>
                 服务状态
               </div>
@@ -198,16 +198,14 @@
 
         const SESSION_KEY = "audio-to-text.session-id";
         const POLL_INTERVAL = 5000;
-        const ALLOWED_EXTENSIONS = new Set([
-          ".aac",
-          ".flac",
-          ".m4a",
-          ".mp3",
-          ".ogg",
-          ".opus",
-          ".wav",
-        ]);
-        const MIME_TYPES = {
+        const DEFAULT_MODEL = "whisperx";
+        const API = {
+          session: "/session",
+          currentTask: "/task",
+          tasks: "/tasks",
+          results: "/results",
+        };
+        const AUDIO_MIME_TYPES = {
           ".aac": "audio/aac",
           ".flac": "audio/flac",
           ".m4a": "audio/mp4",
@@ -216,52 +214,73 @@
           ".opus": "audio/opus",
           ".wav": "audio/wav",
         };
+        const ICONS = {
+          clock: "M12 7v5l3 2m6-2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z",
+          file: "M14 3v5a2 2 0 0 0 2 2h5M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-9l-5-7Z",
+          preview: "M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6S2.5 12 2.5 12Zm9.5 2.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z",
+          download: "M12 4v11m0 0 4-4m-4 4-4-4M5 19h14",
+          warning: "M12 9v4m0 4h.01M10.3 4.3 2.2 18a2 2 0 0 0 3.5 0L13.8 4.3a2 2 0 0 0-3.5 0Z",
+        };
+        const CONNECTION_COPY = {
+          connecting: { label: "正在连接", metric: "连接中" },
+          online: { label: "服务在线", metric: "运行正常" },
+          offline: { label: "连接失败", metric: "暂时离线" },
+        };
+        const DATE_FORMATTER = new Intl.DateTimeFormat("zh-CN", {
+          month: "short",
+          day: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        });
 
         const state = {
           sessionId: "",
-          selectedFile: null,
-          previewUrl: "",
-          previewText: "",
-          uploading: false,
-          refreshing: false,
           sessionPromise: null,
+          refreshPromise: null,
+          selectedFile: null,
+          selectedFileUrl: "",
+          previewText: "",
+          previewController: null,
+          isUploading: false,
+          isReconnecting: false,
           currentTask: null,
           tasks: [],
           results: [],
         };
 
+        const byId = (id) => document.getElementById(id);
         const elements = {
-          connectionButton: document.querySelector("#connectionButton"),
-          connectionLabel: document.querySelector("#connectionLabel"),
-          serviceMetric: document.querySelector("#serviceMetric"),
-          queueMetric: document.querySelector("#queueMetric"),
-          resultMetric: document.querySelector("#resultMetric"),
-          dropZone: document.querySelector("#dropZone"),
-          audioInput: document.querySelector("#audioInput"),
-          selectedFile: document.querySelector("#selectedFile"),
-          selectedFileName: document.querySelector("#selectedFileName"),
-          selectedFileMeta: document.querySelector("#selectedFileMeta"),
-          removeFileButton: document.querySelector("#removeFileButton"),
-          audioPreview: document.querySelector("#audioPreview"),
-          uploadProgress: document.querySelector("#uploadProgress"),
-          progressLabel: document.querySelector("#progressLabel"),
-          progressValue: document.querySelector("#progressValue"),
-          progressBar: document.querySelector("#progressBar"),
-          uploadButton: document.querySelector("#uploadButton"),
-          uploadButtonLabel: document.querySelector("#uploadButtonLabel"),
-          queueCount: document.querySelector("#queueCount"),
-          queueNote: document.querySelector("#queueNote"),
-          resultCount: document.querySelector("#resultCount"),
-          queueContent: document.querySelector("#queueContent"),
-          resultsContent: document.querySelector("#resultsContent"),
-          toastRegion: document.querySelector("#toastRegion"),
-          resultDialog: document.querySelector("#resultDialog"),
-          dialogTitle: document.querySelector("#dialogTitle"),
-          dialogMeta: document.querySelector("#dialogMeta"),
-          dialogBody: document.querySelector("#dialogBody"),
-          closeDialogButton: document.querySelector("#closeDialogButton"),
-          copyResultButton: document.querySelector("#copyResultButton"),
-          downloadResultLink: document.querySelector("#downloadResultLink"),
+          connectionButton: byId("connectionButton"),
+          connectionLabel: byId("connectionLabel"),
+          serviceMetric: byId("serviceMetric"),
+          queueMetric: byId("queueMetric"),
+          resultMetric: byId("resultMetric"),
+          dropZone: byId("dropZone"),
+          audioInput: byId("audioInput"),
+          selectedFile: byId("selectedFile"),
+          selectedFileName: byId("selectedFileName"),
+          selectedFileMeta: byId("selectedFileMeta"),
+          removeFileButton: byId("removeFileButton"),
+          audioPreview: byId("audioPreview"),
+          uploadProgress: byId("uploadProgress"),
+          progressLabel: byId("progressLabel"),
+          progressValue: byId("progressValue"),
+          progressBar: byId("progressBar"),
+          uploadButton: byId("uploadButton"),
+          uploadButtonLabel: byId("uploadButtonLabel"),
+          queueCount: byId("queueCount"),
+          queueNote: byId("queueNote"),
+          resultCount: byId("resultCount"),
+          queueContent: byId("queueContent"),
+          resultsContent: byId("resultsContent"),
+          toastRegion: byId("toastRegion"),
+          resultDialog: byId("resultDialog"),
+          dialogTitle: byId("dialogTitle"),
+          dialogMeta: byId("dialogMeta"),
+          dialogBody: byId("dialogBody"),
+          closeDialogButton: byId("closeDialogButton"),
+          copyResultButton: byId("copyResultButton"),
+          downloadResultLink: byId("downloadResultLink"),
         };
 
         function getStoredSession() {
@@ -276,25 +295,18 @@
           try {
             window.localStorage.setItem(SESSION_KEY, sessionId);
           } catch {
-            // Local storage may be unavailable in privacy-restricted browsers.
+            // 隐私模式下 localStorage 可能不可用，不影响当前页面会话。
           }
         }
 
-        function setConnectionStatus(status) {
-          const labels = {
-            connecting: "正在连接",
-            online: "服务在线",
-            offline: "连接失败",
-          };
-          const metrics = {
-            connecting: "连接中",
-            online: "运行正常",
-            offline: "暂时离线",
-          };
+        function createRequestError(message, status = 0) {
+          const error = new Error(message);
+          error.status = status;
+          return error;
+        }
 
-          elements.connectionButton.dataset.status = status;
-          elements.connectionLabel.textContent = labels[status];
-          elements.serviceMetric.textContent = metrics[status];
+        function getErrorMessage(error, fallback) {
+          return error instanceof Error && error.message ? error.message : fallback;
         }
 
         async function readError(response) {
@@ -303,73 +315,110 @@
             if (typeof body.detail === "string") {
               return body.detail;
             }
+            if (Array.isArray(body.detail)) {
+              const messages = body.detail
+                .map((item) => (typeof item?.msg === "string" ? item.msg : ""))
+                .filter(Boolean);
+              if (messages.length) {
+                return messages.join("；");
+              }
+            }
           } catch {
-            // Fall through to the status-based message below.
+            // 非 JSON 错误响应使用状态码提示。
           }
           return `请求失败（${response.status}）`;
+        }
+
+        function setConnectionStatus(status) {
+          const copy = CONNECTION_COPY[status];
+          elements.connectionButton.dataset.status = status;
+          elements.connectionLabel.textContent = copy.label;
+          elements.serviceMetric.textContent = copy.metric;
+        }
+
+        function resetDashboardData() {
+          state.currentTask = null;
+          state.tasks = [];
+          state.results = [];
+        }
+
+        function invalidateSession(sessionId = state.sessionId) {
+          if (state.sessionId && sessionId && state.sessionId !== sessionId) {
+            return;
+          }
+          state.sessionId = "";
+          setConnectionStatus("connecting");
+          updateControls();
+        }
+
+        async function createSession() {
+          const previousSession = getStoredSession();
+          const response = await fetch(API.session, {
+            method: "POST",
+            headers: previousSession ? { session: previousSession } : {},
+            cache: "no-store",
+          });
+
+          if (!response.ok) {
+            throw createRequestError(await readError(response), response.status);
+          }
+
+          const sessionId = await response.json();
+          if (typeof sessionId !== "string" || !sessionId) {
+            throw createRequestError("服务返回了无效会话", response.status);
+          }
+
+          if (previousSession && previousSession !== sessionId) {
+            resetDashboardData();
+          }
+          state.sessionId = sessionId;
+          storeSession(sessionId);
+          setConnectionStatus("online");
+          updateControls();
+          return sessionId;
         }
 
         async function ensureSession() {
           if (state.sessionId) {
             return state.sessionId;
           }
-
           if (state.sessionPromise) {
             return state.sessionPromise;
           }
 
-          state.sessionPromise = (async () => {
-            const previousSession = getStoredSession();
-            const headers = previousSession ? { session: previousSession } : {};
-            const response = await fetch("/session", {
-              method: "POST",
-              headers,
-              cache: "no-store",
-            });
-
-            if (!response.ok) {
-              throw new Error(await readError(response));
-            }
-
-            const sessionId = await response.json();
-            if (typeof sessionId !== "string" || !sessionId) {
-              throw new Error("服务返回了无效会话");
-            }
-
-            state.sessionId = sessionId;
-            storeSession(sessionId);
-            setConnectionStatus("online");
-            updateUploadButton();
-            return sessionId;
-          })();
-
+          const sessionPromise = createSession();
+          state.sessionPromise = sessionPromise;
           try {
-            return await state.sessionPromise;
+            return await sessionPromise;
           } finally {
-            state.sessionPromise = null;
+            if (state.sessionPromise === sessionPromise) {
+              state.sessionPromise = null;
+            }
           }
         }
 
-        async function apiRequest(path, options = {}, retry = true) {
-          await ensureSession();
+        async function requestJson(path, options = {}, allowSessionRetry = true) {
+          const sessionId = await ensureSession();
           const headers = new Headers(options.headers || {});
-          headers.set("session", state.sessionId);
+          headers.set("session", sessionId);
+
           const response = await fetch(path, {
             ...options,
             headers,
             cache: "no-store",
           });
 
-          if (response.status === 404 && retry) {
-            state.sessionId = "";
+          if (response.status === 404 && allowSessionRetry) {
+            invalidateSession(sessionId);
             await ensureSession();
-            return apiRequest(path, options, false);
+            return requestJson(path, options, false);
           }
-
           if (!response.ok) {
-            throw new Error(await readError(response));
+            throw createRequestError(await readError(response), response.status);
           }
-
+          if (response.status === 204) {
+            return null;
+          }
           return response.json();
         }
 
@@ -392,26 +441,18 @@
           }
 
           const units = ["B", "KB", "MB", "GB"];
-          const index = Math.min(
+          const unitIndex = Math.min(
             Math.floor(Math.log(value) / Math.log(1024)),
             units.length - 1,
           );
-          const amount = value / 1024 ** index;
-          const digits = index === 0 || amount >= 100 ? 0 : 1;
-          return `${amount.toFixed(digits)} ${units[index]}`;
+          const amount = value / 1024 ** unitIndex;
+          const digits = unitIndex === 0 || amount >= 100 ? 0 : 1;
+          return `${amount.toFixed(digits)} ${units[unitIndex]}`;
         }
 
         function formatDate(timestampSeconds) {
           const date = new Date(Number(timestampSeconds) * 1000);
-          if (Number.isNaN(date.getTime())) {
-            return "时间未知";
-          }
-          return new Intl.DateTimeFormat("zh-CN", {
-            month: "short",
-            day: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-          }).format(date);
+          return Number.isNaN(date.getTime()) ? "时间未知" : DATE_FORMATTER.format(date);
         }
 
         function formatTime(seconds) {
@@ -419,8 +460,10 @@
           const hours = Math.floor(value / 3600);
           const minutes = Math.floor((value % 3600) / 60);
           const remainingSeconds = Math.floor(value % 60);
-          const base = `${String(minutes).padStart(2, "0")}:${String(remainingSeconds).padStart(2, "0")}`;
-          return hours > 0 ? `${String(hours).padStart(2, "0")}:${base}` : base;
+          const minutesAndSeconds = `${String(minutes).padStart(2, "0")}:${String(remainingSeconds).padStart(2, "0")}`;
+          return hours
+            ? `${String(hours).padStart(2, "0")}:${minutesAndSeconds}`
+            : minutesAndSeconds;
         }
 
         function createIcon(path, size = 17) {
@@ -463,7 +506,7 @@
           }, 3600);
         }
 
-        function renderSkeleton(container, rows = 2) {
+        function renderSkeleton(container, rows) {
           container.replaceChildren();
           for (let index = 0; index < rows; index += 1) {
             const row = document.createElement("div");
@@ -521,34 +564,37 @@
             }
             icon.append(bars);
           } else {
-            icon.append(createIcon("M12 7v5l3 2m6-2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z", 21));
+            icon.append(createIcon(ICONS.clock, 21));
           }
-
           return icon;
         }
 
         function renderTasks() {
-          const entries = [
-            ...(state.currentTask ? [{ task: state.currentTask, isProcessing: true }] : []),
-            ...state.tasks.map((task) => ({ task, isProcessing: false })),
-          ];
-          const processingCount = state.currentTask ? 1 : 0;
+          const entries = [];
+          if (state.currentTask) {
+            entries.push({ task: state.currentTask, isProcessing: true });
+          }
+          entries.push(...state.tasks.map((task) => ({ task, isProcessing: false })));
 
           elements.queueCount.textContent = String(entries.length);
           elements.queueMetric.textContent = String(entries.length);
-          elements.queueNote.textContent = processingCount
-            ? `正在处理 1 个任务，另有 ${state.tasks.length} 个任务等待。`
-            : state.tasks.length
-              ? `当前有 ${state.tasks.length} 个任务等待处理。`
-              : "提交音频后，任务会先进入队列等待处理。";
-          elements.queueContent.replaceChildren();
+          if (state.currentTask) {
+            elements.queueNote.textContent = state.tasks.length
+              ? `正在处理 1 个任务，另有 ${state.tasks.length} 个任务等待。`
+              : "正在处理 1 个任务。";
+          } else if (state.tasks.length) {
+            elements.queueNote.textContent = `当前有 ${state.tasks.length} 个任务等待处理。`;
+          } else {
+            elements.queueNote.textContent = "提交音频后，任务会先进入队列等待处理。";
+          }
 
+          elements.queueContent.replaceChildren();
           if (!entries.length) {
             elements.queueContent.append(
               createEmptyState(
                 "暂无待处理任务",
                 "上传音频后，可以在这里查看处理状态。",
-                "M12 7v5l3 2m6-2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z",
+                ICONS.clock,
               ),
             );
             return;
@@ -556,7 +602,6 @@
 
           const list = document.createElement("ul");
           list.className = "data-list";
-
           entries.forEach(({ task, isProcessing }) => {
             const row = document.createElement("li");
             row.className = "data-row";
@@ -571,7 +616,7 @@
 
             const meta = document.createElement("p");
             meta.className = "mt-1 mb-0 text-xs text-base-content/45";
-            meta.textContent = `${task.model || "whisperx"} · ${isProcessing ? "正在识别与对齐" : "等待处理"}`;
+            meta.textContent = `${task.model || DEFAULT_MODEL} · ${isProcessing ? "正在识别与对齐" : "等待处理"}`;
 
             const status = document.createElement("span");
             status.className = `badge badge-sm flex-none ${isProcessing ? "badge-warning" : "badge-ghost"}`;
@@ -581,7 +626,6 @@
             row.append(createTaskIcon(isProcessing), copy, status);
             list.append(row);
           });
-
           elements.queueContent.append(list);
         }
 
@@ -595,7 +639,7 @@
               createEmptyState(
                 "暂无已完成文件",
                 "转写完成后，结果会出现在这里并支持查看与下载。",
-                "M14 3v5a2 2 0 0 0 2 2h5M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-9l-5-7Z",
+                ICONS.file,
               ),
             );
             return;
@@ -603,7 +647,6 @@
 
           const list = document.createElement("ul");
           list.className = "data-list";
-
           state.results.forEach((result) => {
             const visibleName = displayFilename(result.name || "result.json");
             const row = document.createElement("li");
@@ -611,7 +654,7 @@
 
             const type = document.createElement("span");
             type.className = "data-icon";
-            type.append(createIcon("M14 3v5a2 2 0 0 0 2 2h5M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-9l-5-7Z", 21));
+            type.append(createIcon(ICONS.file, 21));
 
             const copy = document.createElement("div");
             copy.className = "data-copy";
@@ -624,7 +667,6 @@
             const meta = document.createElement("p");
             meta.className = "mt-1 mb-0 text-xs text-base-content/45";
             meta.textContent = `${formatBytes(result.size)} · ${formatDate(result.modified_at)}`;
-
             copy.append(name, meta);
 
             const actions = document.createElement("div");
@@ -635,10 +677,12 @@
             previewButton.type = "button";
             previewButton.setAttribute("aria-label", `查看 ${visibleName}`);
             previewButton.append(
-              createIcon("M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6S2.5 12 2.5 12Zm9.5 2.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z", 16),
+              createIcon(ICONS.preview, 16),
               document.createTextNode("查看"),
             );
-            previewButton.addEventListener("click", () => openResult(result));
+            previewButton.addEventListener("click", () => {
+              void openResult(result);
+            });
 
             const downloadLink = document.createElement("a");
             downloadLink.className = "btn btn-ghost btn-sm";
@@ -646,7 +690,7 @@
             downloadLink.download = visibleName;
             downloadLink.setAttribute("aria-label", `下载 ${visibleName}`);
             downloadLink.append(
-              createIcon("M12 4v11m0 0 4-4m-4 4-4-4M5 19h14", 16),
+              createIcon(ICONS.download, 16),
               document.createTextNode("下载"),
             );
 
@@ -654,76 +698,102 @@
             row.append(type, copy, actions);
             list.append(row);
           });
-
           elements.resultsContent.append(list);
         }
 
-        async function refreshData({ notify = false, initial = false } = {}) {
-          if (state.refreshing) {
-            return;
-          }
+        const dashboardResources = [
+          {
+            key: "currentTask",
+            path: API.currentTask,
+            normalize: (value) => value || null,
+          },
+          {
+            key: "tasks",
+            path: API.tasks,
+            normalize: (value) => (Array.isArray(value) ? value : []),
+          },
+          {
+            key: "results",
+            path: API.results,
+            normalize: (value) => (Array.isArray(value) ? value : []),
+          },
+        ];
 
-          state.refreshing = true;
-          if (initial) {
-            renderSkeleton(elements.queueContent, 2);
-            renderSkeleton(elements.resultsContent, 3);
-          }
-
-          const [currentTaskResult, tasksResult, resultsResult] = await Promise.allSettled([
-            apiRequest("/task"),
-            apiRequest("/tasks"),
-            apiRequest("/results"),
-          ]);
-
-          let successCount = 0;
+        async function loadDashboard({ notify = false, reportError = false } = {}) {
+          const responses = await Promise.allSettled(
+            dashboardResources.map((resource) => requestJson(resource.path)),
+          );
           const errors = [];
+          let successCount = 0;
 
-          if (currentTaskResult.status === "fulfilled") {
-            state.currentTask = currentTaskResult.value || null;
-            successCount += 1;
-          } else {
-            errors.push(currentTaskResult.reason);
-          }
-
-          if (tasksResult.status === "fulfilled") {
-            state.tasks = Array.isArray(tasksResult.value) ? tasksResult.value : [];
-            successCount += 1;
-          } else {
-            errors.push(tasksResult.reason);
-          }
-
-          if (resultsResult.status === "fulfilled") {
-            state.results = Array.isArray(resultsResult.value) ? resultsResult.value : [];
-            successCount += 1;
-          } else {
-            errors.push(resultsResult.reason);
-          }
+          responses.forEach((response, index) => {
+            const resource = dashboardResources[index];
+            if (response.status === "fulfilled") {
+              state[resource.key] = resource.normalize(response.value);
+              successCount += 1;
+            } else {
+              errors.push(response.reason);
+            }
+          });
 
           renderTasks();
           renderResults();
 
-          if (successCount > 0) {
+          if (successCount) {
             setConnectionStatus("online");
             if (notify) {
               showToast("任务和文件已更新");
             }
-          } else {
-            setConnectionStatus("offline");
-            if (notify || initial) {
-              showToast(errors[0]?.message || "暂时无法获取任务数据", "error");
-            }
+            return;
           }
 
-          state.refreshing = false;
+          setConnectionStatus("offline");
+          if (reportError) {
+            showToast(
+              getErrorMessage(errors[0], "暂时无法获取任务数据"),
+              "error",
+            );
+          }
+        }
+
+        async function refreshData(options = {}) {
+          if (state.refreshPromise) {
+            return state.refreshPromise;
+          }
+
+          const refreshPromise = loadDashboard(options);
+          state.refreshPromise = refreshPromise;
+          try {
+            return await refreshPromise;
+          } finally {
+            if (state.refreshPromise === refreshPromise) {
+              state.refreshPromise = null;
+            }
+          }
+        }
+
+        async function refreshAfterCurrentRequest(options = {}) {
+          const currentRefresh = state.refreshPromise;
+          if (currentRefresh) {
+            try {
+              await currentRefresh;
+            } catch {
+              // 后续刷新会重新获取完整状态。
+            }
+          }
+          return refreshData(options);
+        }
+
+        function releaseSelectedFileUrl() {
+          if (state.selectedFileUrl) {
+            URL.revokeObjectURL(state.selectedFileUrl);
+            state.selectedFileUrl = "";
+          }
         }
 
         function clearSelectedFile() {
-          if (state.previewUrl) {
-            URL.revokeObjectURL(state.previewUrl);
-          }
-
+          releaseSelectedFileUrl();
           state.selectedFile = null;
-          state.previewUrl = "";
           elements.audioInput.value = "";
           elements.audioPreview.removeAttribute("src");
           elements.audioPreview.load();
@@ -731,48 +801,52 @@
           elements.dropZone.hidden = false;
           elements.uploadProgress.hidden = true;
           updateProgress(0);
-          updateUploadButton();
+          updateControls();
         }
 
         function selectFile(file) {
-          if (!file) {
+          if (!file || state.isUploading) {
             return;
           }
 
           const extension = getExtension(file.name);
-          if (!ALLOWED_EXTENSIONS.has(extension)) {
-            showToast("不支持该文件格式，请选择常见音频文件", "error");
+          if (!AUDIO_MIME_TYPES[extension]) {
             elements.audioInput.value = "";
+            showToast("不支持该文件格式，请选择常见音频文件", "error");
             return;
           }
 
-          if (state.previewUrl) {
-            URL.revokeObjectURL(state.previewUrl);
-          }
-
+          releaseSelectedFileUrl();
           state.selectedFile = file;
-          state.previewUrl = URL.createObjectURL(file);
+          state.selectedFileUrl = URL.createObjectURL(file);
           elements.selectedFileName.textContent = file.name;
           elements.selectedFileName.title = file.name;
           elements.selectedFileMeta.textContent = `${extension.slice(1).toUpperCase()} · ${formatBytes(file.size)}`;
-          elements.audioPreview.src = state.previewUrl;
+          elements.audioPreview.src = state.selectedFileUrl;
           elements.dropZone.hidden = true;
           elements.selectedFile.hidden = false;
           elements.uploadProgress.hidden = true;
           updateProgress(0);
-          updateUploadButton();
+          updateControls();
         }
 
-        function updateUploadButton() {
-          elements.uploadButton.disabled = Boolean(
-            state.uploading || (state.selectedFile && !state.sessionId),
-          );
-          elements.removeFileButton.disabled = state.uploading;
+        function updateControls() {
+          const waitingForSession = Boolean(state.selectedFile && !state.sessionId);
+          elements.uploadButton.disabled =
+            state.isUploading || state.isReconnecting || waitingForSession;
+          elements.removeFileButton.disabled = state.isUploading;
+          elements.audioInput.disabled = state.isUploading;
+          elements.connectionButton.disabled = state.isUploading || state.isReconnecting;
+          elements.dropZone.setAttribute("aria-disabled", String(state.isUploading));
 
-          if (state.uploading) {
+          if (state.isUploading) {
             elements.uploadButtonLabel.textContent = "正在上传…";
+          } else if (state.isReconnecting && state.selectedFile) {
+            elements.uploadButtonLabel.textContent = "等待服务连接";
           } else if (state.selectedFile) {
-            elements.uploadButtonLabel.textContent = state.sessionId ? "开始转写" : "等待服务连接";
+            elements.uploadButtonLabel.textContent = state.sessionId
+              ? "开始转写"
+              : "等待服务连接";
           } else {
             elements.uploadButtonLabel.textContent = "选择音频文件";
           }
@@ -785,21 +859,29 @@
         }
 
         function normalizeUploadFile(file) {
-          const extension = getExtension(file.name);
           if (file.type && file.type.startsWith("audio/")) {
             return file;
           }
-          return new Blob([file], { type: MIME_TYPES[extension] || "audio/mpeg" });
+          const extension = getExtension(file.name);
+          return new Blob([file], { type: AUDIO_MIME_TYPES[extension] });
         }
 
         function parseUploadError(xhr) {
           try {
             const body = xhr.response || JSON.parse(xhr.responseText);
-            if (typeof body.detail === "string") {
+            if (typeof body?.detail === "string") {
               return body.detail;
             }
+            if (Array.isArray(body?.detail)) {
+              const messages = body.detail
+                .map((item) => (typeof item?.msg === "string" ? item.msg : ""))
+                .filter(Boolean);
+              if (messages.length) {
+                return messages.join("；");
+              }
+            }
           } catch {
-            // Fall through to the status-based message below.
+            // 非 JSON 错误响应使用状态码提示。
           }
 
           if (xhr.status === 413) {
@@ -808,70 +890,89 @@
           if (xhr.status === 415) {
             return "服务不支持该音频格式";
           }
-          return xhr.status ? `上传失败（${xhr.status}）` : "上传失败，请检查网络连接";
+          return xhr.status
+            ? `上传失败（${xhr.status}）`
+            : "上传失败，请检查网络连接";
+        }
+
+        function sendTaskUpload(file, sessionId) {
+          return new Promise((resolve, reject) => {
+            const xhr = new XMLHttpRequest();
+            xhr.open("POST", API.currentTask);
+            xhr.setRequestHeader("session", sessionId);
+            xhr.responseType = "json";
+
+            xhr.upload.addEventListener("progress", (event) => {
+              if (event.lengthComputable) {
+                updateProgress((event.loaded / event.total) * 100);
+              }
+            });
+            xhr.addEventListener("load", () => {
+              if (xhr.status >= 200 && xhr.status < 300) {
+                updateProgress(100);
+                resolve();
+                return;
+              }
+              reject(createRequestError(parseUploadError(xhr), xhr.status));
+            });
+            xhr.addEventListener("error", () => {
+              reject(createRequestError("上传失败，请检查网络连接"));
+            });
+            xhr.addEventListener("abort", () => {
+              reject(createRequestError("上传已取消"));
+            });
+
+            const formData = new FormData();
+            formData.append("file", normalizeUploadFile(file), file.name);
+            formData.append("model", DEFAULT_MODEL);
+            xhr.send(formData);
+          });
+        }
+
+        async function submitTask(file, allowSessionRetry = true) {
+          const sessionId = await ensureSession();
+          try {
+            return await sendTaskUpload(file, sessionId);
+          } catch (error) {
+            if (error?.status === 404 && allowSessionRetry) {
+              invalidateSession(sessionId);
+              elements.progressLabel.textContent = "会话已更新，正在重新上传";
+              updateProgress(0);
+              return submitTask(file, false);
+            }
+            throw error;
+          }
         }
 
         async function uploadSelectedFile() {
-          if (!state.selectedFile || state.uploading) {
+          const file = state.selectedFile;
+          if (!file || state.isUploading) {
             return;
           }
 
-          try {
-            await ensureSession();
-          } catch (error) {
-            setConnectionStatus("offline");
-            showToast(error.message || "无法建立上传会话", "error");
-            return;
-          }
-
-          const originalName = state.selectedFile.name;
-          state.uploading = true;
+          state.isUploading = true;
           elements.uploadProgress.hidden = false;
           elements.progressLabel.textContent = "正在上传";
-          updateUploadButton();
           updateProgress(0);
+          updateControls();
 
           try {
-            await new Promise((resolve, reject) => {
-              const xhr = new XMLHttpRequest();
-              xhr.open("POST", "/task");
-              xhr.setRequestHeader("session", state.sessionId);
-              xhr.responseType = "json";
-
-              xhr.upload.addEventListener("progress", (event) => {
-                if (event.lengthComputable) {
-                  updateProgress((event.loaded / event.total) * 100);
-                }
-              });
-
-              xhr.addEventListener("load", () => {
-                if (xhr.status >= 200 && xhr.status < 300) {
-                  updateProgress(100);
-                  resolve(xhr.response);
-                } else {
-                  reject(new Error(parseUploadError(xhr)));
-                }
-              });
-              xhr.addEventListener("error", () => reject(new Error("上传失败，请检查网络连接")));
-              xhr.addEventListener("abort", () => reject(new Error("上传已取消")));
-
-              const formData = new FormData();
-              formData.append("file", normalizeUploadFile(state.selectedFile), originalName);
-              formData.append("model", "whisperx");
-              xhr.send(formData);
-            });
-
-            elements.progressLabel.textContent = "上传完成";
-            showToast(`“${originalName}”已加入转写队列`);
-            window.setTimeout(clearSelectedFile, 450);
-            await refreshData();
+            await submitTask(file);
           } catch (error) {
+            if (!state.sessionId || !error?.status || error.status >= 500) {
+              setConnectionStatus("offline");
+            }
             elements.progressLabel.textContent = "上传失败";
-            showToast(error.message || "上传失败，请稍后重试", "error");
+            showToast(getErrorMessage(error, "上传失败，请稍后重试"), "error");
+            return;
           } finally {
-            state.uploading = false;
-            updateUploadButton();
+            state.isUploading = false;
+            updateControls();
           }
+
+          showToast(`“${file.name}”已加入转写队列`);
+          clearSelectedFile();
+          await refreshAfterCurrentRequest();
         }
 
         function showDialog() {
@@ -879,12 +980,20 @@
             if (!elements.resultDialog.open) {
               elements.resultDialog.showModal();
             }
-          } else {
-            elements.resultDialog.setAttribute("open", "");
+            return;
+          }
+          elements.resultDialog.setAttribute("open", "");
+        }
+
+        function abortResultPreview() {
+          if (state.previewController) {
+            state.previewController.abort();
+            state.previewController = null;
           }
         }
 
         function closeDialog() {
+          abortResultPreview();
           if (typeof elements.resultDialog.close === "function") {
             elements.resultDialog.close();
           } else {
@@ -892,14 +1001,18 @@
           }
         }
 
+        function getTranscriptText(data, segments) {
+          const segmentText = segments
+            .map((segment) => (typeof segment?.text === "string" ? segment.text : ""))
+            .filter(Boolean)
+            .join("")
+            .trim();
+          return segmentText || (typeof data?.text === "string" ? data.text.trim() : "");
+        }
+
         function renderResultPreview(data) {
           const segments = Array.isArray(data?.segments) ? data.segments : [];
-          const segmentTexts = segments
-            .map((segment) => (typeof segment?.text === "string" ? segment.text : ""))
-            .filter(Boolean);
-          const fullText =
-            segmentTexts.join("").trim() ||
-            (typeof data?.text === "string" ? data.text.trim() : "");
+          const fullText = getTranscriptText(data, segments);
 
           state.previewText = fullText;
           elements.copyResultButton.disabled = !fullText;
@@ -936,7 +1049,6 @@
 
             const list = document.createElement("ol");
             list.className = "segment-list";
-
             segments.forEach((segment) => {
               const item = document.createElement("li");
               item.className = "segment-item";
@@ -952,56 +1064,79 @@
               item.append(time, text);
               list.append(item);
             });
-
             elements.dialogBody.append(label, list);
           }
         }
 
+        function renderPreviewLoading() {
+          const loading = document.createElement("div");
+          loading.className = "grid min-h-64 place-items-center text-sm text-base-content/50";
+
+          const content = document.createElement("div");
+          content.className = "text-center";
+
+          const spinner = document.createElement("span");
+          spinner.className = "loading loading-spinner loading-md mb-3 block text-primary";
+          content.append(spinner, document.createTextNode("正在读取转写结果…"));
+          loading.append(content);
+          elements.dialogBody.replaceChildren(loading);
+        }
+
         async function openResult(result) {
+          abortResultPreview();
+          const controller = new AbortController();
+          state.previewController = controller;
+
           const visibleName = displayFilename(result.name || "result.json");
+          const baseMeta = `${formatBytes(result.size)} · ${formatDate(result.modified_at)}`;
           elements.dialogTitle.textContent = visibleName;
-          elements.dialogMeta.textContent = `${formatBytes(result.size)} · ${formatDate(result.modified_at)}`;
+          elements.dialogMeta.textContent = baseMeta;
           elements.downloadResultLink.href = result.url;
           elements.downloadResultLink.download = visibleName;
           elements.copyResultButton.disabled = true;
           state.previewText = "";
-
-          const loading = document.createElement("div");
-          loading.className = "grid min-h-64 place-items-center text-sm text-base-content/50";
-          const loadingContent = document.createElement("div");
-          loadingContent.className = "text-center";
-          const spinner = document.createElement("span");
-          spinner.className = "loading loading-spinner loading-md mb-3 block text-primary";
-          loadingContent.append(spinner, document.createTextNode("正在读取转写结果…"));
-          loading.append(loadingContent);
-          elements.dialogBody.replaceChildren(loading);
+          renderPreviewLoading();
           showDialog();
 
           try {
-            const response = await fetch(result.url, { cache: "no-store" });
+            const response = await fetch(result.url, {
+              cache: "no-store",
+              signal: controller.signal,
+            });
             if (!response.ok) {
-              throw new Error(`读取结果失败（${response.status}）`);
+              throw createRequestError(`读取结果失败（${response.status}）`, response.status);
             }
 
             const data = await response.json();
-            renderResultPreview(data);
+            if (state.previewController !== controller) {
+              return;
+            }
 
-            const language = typeof data?.language === "string" ? data.language.toUpperCase() : "";
+            renderResultPreview(data);
+            const language = typeof data?.language === "string"
+              ? data.language.toUpperCase()
+              : "";
             const segmentCount = Array.isArray(data?.segments) ? data.segments.length : 0;
-            const details = [
-              `${formatBytes(result.size)} · ${formatDate(result.modified_at)}`,
+            elements.dialogMeta.textContent = [
+              baseMeta,
               language ? `语言 ${language}` : "",
               segmentCount ? `${segmentCount} 个片段` : "",
-            ].filter(Boolean);
-            elements.dialogMeta.textContent = details.join(" · ");
+            ].filter(Boolean).join(" · ");
           } catch (error) {
+            if (error?.name === "AbortError" || state.previewController !== controller) {
+              return;
+            }
             elements.dialogBody.replaceChildren(
               createEmptyState(
                 "无法预览该文件",
-                error.message || "请下载文件后查看。",
-                "M12 9v4m0 4h.01M10.3 4.3 2.2 18a2 2 0 0 0 3.5 0L13.8 4.3a2 2 0 0 0-3.5 0Z",
+                getErrorMessage(error, "请下载文件后查看。"),
+                ICONS.warning,
               ),
             );
+          } finally {
+            if (state.previewController === controller) {
+              state.previewController = null;
+            }
           }
         }
 
@@ -1016,12 +1151,16 @@
             } else {
               const textarea = document.createElement("textarea");
               textarea.value = state.previewText;
+              textarea.setAttribute("readonly", "");
               textarea.style.position = "fixed";
               textarea.style.opacity = "0";
               document.body.append(textarea);
               textarea.select();
-              document.execCommand("copy");
+              const copied = document.execCommand("copy");
               textarea.remove();
+              if (!copied) {
+                throw new Error("Copy command failed");
+              }
             }
             showToast("文字已复制到剪贴板");
           } catch {
@@ -1030,70 +1169,86 @@
         }
 
         async function reconnect() {
-          setConnectionStatus("connecting");
-          state.sessionId = "";
-          updateUploadButton();
+          if (state.isUploading || state.isReconnecting) {
+            return;
+          }
 
+          state.isReconnecting = true;
+          invalidateSession();
           try {
             await ensureSession();
-            await refreshData({ notify: true });
+            await refreshAfterCurrentRequest({ notify: true, reportError: true });
           } catch (error) {
             setConnectionStatus("offline");
-            showToast(error.message || "无法连接服务", "error");
+            showToast(getErrorMessage(error, "无法连接服务"), "error");
+          } finally {
+            state.isReconnecting = false;
+            updateControls();
           }
         }
 
         function bindEvents() {
-          elements.audioInput.addEventListener("change", (event) => {
-            selectFile(event.target.files?.[0]);
-          });
+          let dragDepth = 0;
 
+          elements.audioInput.addEventListener("change", (event) => {
+            selectFile(event.currentTarget.files?.[0]);
+          });
           elements.dropZone.addEventListener("keydown", (event) => {
-            if (event.key === "Enter" || event.key === " ") {
+            if (!state.isUploading && (event.key === "Enter" || event.key === " ")) {
               event.preventDefault();
               elements.audioInput.click();
             }
           });
-
-          ["dragenter", "dragover"].forEach((eventName) => {
-            elements.dropZone.addEventListener(eventName, (event) => {
-              event.preventDefault();
-              elements.dropZone.classList.add("is-dragging");
-            });
+          elements.dropZone.addEventListener("dragenter", (event) => {
+            event.preventDefault();
+            if (state.isUploading) {
+              return;
+            }
+            dragDepth += 1;
+            elements.dropZone.classList.add("is-dragging");
           });
-
-          ["dragleave", "drop"].forEach((eventName) => {
-            elements.dropZone.addEventListener(eventName, (event) => {
-              event.preventDefault();
+          elements.dropZone.addEventListener("dragover", (event) => {
+            event.preventDefault();
+          });
+          elements.dropZone.addEventListener("dragleave", (event) => {
+            event.preventDefault();
+            dragDepth = Math.max(0, dragDepth - 1);
+            if (!dragDepth) {
               elements.dropZone.classList.remove("is-dragging");
-            });
+            }
           });
-
           elements.dropZone.addEventListener("drop", (event) => {
+            event.preventDefault();
+            dragDepth = 0;
+            elements.dropZone.classList.remove("is-dragging");
             selectFile(event.dataTransfer?.files?.[0]);
           });
+
           elements.removeFileButton.addEventListener("click", clearSelectedFile);
           elements.uploadButton.addEventListener("click", () => {
             if (state.selectedFile) {
-              uploadSelectedFile();
+              void uploadSelectedFile();
             } else {
               elements.audioInput.click();
             }
           });
-          elements.connectionButton.addEventListener("click", reconnect);
+          elements.connectionButton.addEventListener("click", () => {
+            void reconnect();
+          });
           elements.closeDialogButton.addEventListener("click", closeDialog);
-          elements.copyResultButton.addEventListener("click", copyPreviewText);
+          elements.resultDialog.addEventListener("close", abortResultPreview);
+          elements.copyResultButton.addEventListener("click", () => {
+            void copyPreviewText();
+          });
 
           document.addEventListener("visibilitychange", () => {
             if (!document.hidden) {
-              refreshData();
+              void refreshData();
             }
           });
-
           window.addEventListener("beforeunload", () => {
-            if (state.previewUrl) {
-              URL.revokeObjectURL(state.previewUrl);
-            }
+            releaseSelectedFileUrl();
+            abortResultPreview();
           });
         }
 
@@ -1102,25 +1257,29 @@
           renderSkeleton(elements.queueContent, 2);
           renderSkeleton(elements.resultsContent, 3);
           setConnectionStatus("connecting");
+          updateControls();
 
           try {
             await ensureSession();
-            await refreshData({ initial: true });
+            await refreshData({ reportError: true });
           } catch (error) {
             setConnectionStatus("offline");
             renderTasks();
             renderResults();
-            showToast(error.message || "无法连接服务，请确认服务已启动", "error");
+            showToast(
+              getErrorMessage(error, "无法连接服务，请确认服务已启动"),
+              "error",
+            );
           }
 
           window.setInterval(() => {
             if (!document.hidden) {
-              refreshData();
+              void refreshData();
             }
           }, POLL_INTERVAL);
         }
 
-        initialize();
+        void initialize();
       })();
     </script>
   </body>
