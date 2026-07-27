@@ -9,7 +9,6 @@ ENV PYTHONUNBUFFERED=1 \
 RUN apt-get update \
     && apt-get install --no-install-recommends --yes \
         ffmpeg \
-        libgomp1 \
     && rm -rf /var/lib/apt/lists/* \
     && mkdir -p /data
 
@@ -20,8 +19,6 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --locked --no-dev --no-install-project
 
 COPY . .
-
-ENTRYPOINT []
 
 USER root
 
