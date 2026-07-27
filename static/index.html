@@ -616,7 +616,7 @@
 
             const meta = document.createElement("p");
             meta.className = "mt-1 mb-0 text-xs text-base-content/45";
-            meta.textContent = `${task.model || DEFAULT_MODEL} · ${isProcessing ? "Transcribing and aligning" : "Waiting"}`;
+            meta.textContent = `${task.model || DEFAULT_MODEL} · ${isProcessing ? task.status_message || "Transcribing and aligning" : "Waiting"}`;
 
             const status = document.createElement("span");
             status.className = `badge badge-sm flex-none ${isProcessing ? "badge-warning" : "badge-ghost"}`;
