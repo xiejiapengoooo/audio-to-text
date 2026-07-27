@@ -11,7 +11,7 @@ class Settings(BaseSettings):
 
     app_name: str = "audio-to-text"
     host: str = "0.0.0.0" if space_id else "127.0.0.1"
-    port: int = 8000
+    port: int = 7860
     cors_origins: list[str] = Field(default_factory=lambda: ["*"])
 
 
