@@ -6,12 +6,13 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
+    space_id: str | None = os.getenv("SPACE_ID")
+
     app_name: str = "audio-to-text"
-    host: str = "127.0.0.1"
+    host: str = "0.0.0.0" if space_id else "127.0.0.1"
     port: int = 8000
     cors_origins: list[str] = Field(default_factory=lambda: ["*"])
 
-    space_id: str | None = os.getenv("SPACE_ID")
 
     model_download_dir: Path | None = None
 
