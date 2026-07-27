@@ -1,13 +1,16 @@
-from datetime import datetime, timezone
 import json
 import os
+import uuid
+from datetime import UTC, datetime
 from pathlib import Path
 from tempfile import NamedTemporaryFile
-import uuid
+
 from anyio import Condition, fail_after, sleep, to_thread
 from anyio.abc import TaskGroup
+
 from config import Settings
 from logger import get_logger
+
 from .session import Session
 
 
@@ -33,7 +36,7 @@ class SessionManager:
 
     async def create(self, session_id: str | None = None) -> Session:
         async with self._condition:
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             existing_session = (
                 self._sessions.get(session_id) if session_id is not None else None
             )
@@ -75,7 +78,7 @@ class SessionManager:
             if session is None:
                 return None
 
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             if session.is_expired(now):
                 self._sessions.pop(session_id)
                 try:
@@ -108,7 +111,7 @@ class SessionManager:
             data = json.load(file)
 
         if not isinstance(data, dict) or not isinstance(data.get("sessions"), dict):
-            raise ValueError("sessions.json must contain a sessions object")
+            raise TypeError("sessions.json must contain a sessions object")
 
         sessions = {}
         for session_id, item in data["sessions"].items():
@@ -126,7 +129,7 @@ class SessionManager:
         self._sessions_file_path.parent.mkdir(parents=True, exist_ok=True)
         temporary_path: Path | None = None
         data = {
-            "updatedAt": datetime.now(timezone.utc).isoformat(),
+            "updatedAt": datetime.now(UTC).isoformat(),
             "sessions": {
                 session_id: session.to_dict()
                 for session_id, session in sorted(self._sessions.items())
@@ -154,7 +157,7 @@ class SessionManager:
                 temporary_path.unlink(missing_ok=True)
 
     async def _remove_expired(self) -> None:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         expired_sessions = {
             session_id: session
             for session_id, session in self._sessions.items()
@@ -183,7 +186,7 @@ class SessionManager:
                         delay = max(
                             0.0,
                             (
-                                next_expiration - datetime.now(timezone.utc)
+                                next_expiration - datetime.now(UTC)
                             ).total_seconds(),
                         )
                     else:

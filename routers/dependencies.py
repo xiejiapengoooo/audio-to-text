@@ -1,5 +1,7 @@
 from typing import Annotated
+
 from fastapi import Depends, Header, HTTPException, Request
+
 from sessions.session import Session
 
 

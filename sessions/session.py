@@ -1,5 +1,6 @@
 from __future__ import annotations
-from datetime import datetime, timedelta, timezone
+
+from datetime import UTC, datetime, timedelta
 
 
 class Session:
@@ -13,7 +14,7 @@ class Session:
         self.expires_at = self._next_expiration(now)
 
     def is_expired(self, now: datetime | None = None) -> bool:
-        return self.expires_at <= (now or datetime.now(timezone.utc))
+        return self.expires_at <= (now or datetime.now(UTC))
 
     def to_dict(self) -> dict[str, str]:
         return {
@@ -24,14 +25,14 @@ class Session:
     @classmethod
     def from_dict(cls, data: object) -> Session:
         if not isinstance(data, dict):
-            raise ValueError("Session data must be an object")
+            raise TypeError("Session data must be an object")
 
         session_id = data.get("session_id")
         expires_at_value = data.get("expires_at")
         if not isinstance(session_id, str) or not session_id:
             raise ValueError("Session id must be a non-empty string")
         if not isinstance(expires_at_value, str):
-            raise ValueError("Session expiration must be a string")
+            raise TypeError("Session expiration must be a string")
 
         expires_at = datetime.fromisoformat(expires_at_value)
         if expires_at.tzinfo is None:
@@ -39,9 +40,9 @@ class Session:
 
         return cls(
             session_id=session_id,
-            expires_at=expires_at.astimezone(timezone.utc),
+            expires_at=expires_at.astimezone(UTC),
         )
 
     @classmethod
     def _next_expiration(cls, now: datetime | None = None) -> datetime:
-        return (now or datetime.now(timezone.utc)) + cls.lifetime
+        return (now or datetime.now(UTC)) + cls.lifetime

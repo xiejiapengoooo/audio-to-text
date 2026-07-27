@@ -1,14 +1,17 @@
-from collections import deque
-from datetime import datetime, timezone
 import json
 import os
 import uuid
+from collections import deque
+from datetime import UTC, datetime
 from pathlib import Path
 from tempfile import NamedTemporaryFile
+
 from anyio import Condition, to_thread
+
 from config import Settings
 from constants import Model
 from logger import get_logger
+
 from .task import Task
 
 
@@ -83,11 +86,11 @@ class TaskManager:
             data = json.load(file)
 
         if not isinstance(data, dict):
-            raise ValueError("tasks.json must contain an object")
+            raise TypeError("tasks.json must contain an object")
 
         tasks_data = data.get("tasks")
         if not isinstance(tasks_data, list):
-            raise ValueError("tasks.json must contain a tasks array")
+            raise TypeError("tasks.json must contain a tasks array")
 
         tasks: deque[Task] = deque()
         task_ids: set[str] = set()
@@ -107,7 +110,7 @@ class TaskManager:
         self._tasks_file_path.parent.mkdir(parents=True, exist_ok=True)
         temporary_path: Path | None = None
         data = {
-            "updatedAt": datetime.now(timezone.utc).isoformat(),
+            "updatedAt": datetime.now(UTC).isoformat(),
             "tasks": [task.to_dict() for task in self._tasks],
         }
 

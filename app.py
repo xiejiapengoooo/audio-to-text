@@ -1,20 +1,23 @@
+from contextlib import asynccontextmanager
+from pathlib import Path
+
 import uvicorn
 from anyio import create_task_group
-from pathlib import Path
-from contextlib import asynccontextmanager
 from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+
 from common import get_output_dir
 from config import get_settings
+from providers.whisperx import WhisperXProvider
 from routers.common import router as health_router
+from routers.result import router as result_router
 from routers.session import router as session_router
 from routers.task import router as task_router
-from routers.result import router as result_router
-from providers.whisperx import WhisperXProvider
 from sessions.manager import SessionManager
 from tasks.manager import TaskManager
 from tasks.runner import TaskRunner
+
 
 def create_app() -> FastAPI:
     settings = get_settings()

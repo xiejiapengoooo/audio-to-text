@@ -2,16 +2,17 @@ from abc import ABC, abstractmethod
 from collections.abc import Callable, Iterable
 from multiprocessing.context import SpawnContext
 from multiprocessing.queues import Queue
+from pathlib import Path
 from queue import Empty
 from typing import Any
-from pathlib import Path
+
 import torch
+
 from common import ProcessEvent, create_process_event
 from config import Settings
+from constants import ProcessEventType
 from logger import get_logger
 from tasks.task import Task
-from constants import ProcessEventType
-
 
 type OnEventCallback = Callable[[ProcessEvent], None]
 

@@ -1,11 +1,12 @@
 from pathlib import Path
 from tempfile import NamedTemporaryFile
+
 import anyio
-from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
+from fastapi import APIRouter, HTTPException, Request, UploadFile
+
 from constants import DEFAULT_MODEL, Model
 from routers.dependencies import CurrentSession
 from tasks.task import TaskData
-
 
 router = APIRouter()
 
@@ -37,8 +38,8 @@ async def get_tasks(
 async def create_task(
     request: Request,
     session: CurrentSession,
-    file: UploadFile = File(...),
-    model: Model = Form(DEFAULT_MODEL),
+    file: UploadFile,
+    model: Model = DEFAULT_MODEL,
 ) -> str:
     temporary_path: Path | None = None
 

@@ -1,7 +1,8 @@
 from __future__ import annotations
-from threading import Lock
-from common import Model, is_model
 
+from threading import Lock
+
+from common import Model, is_model
 
 type TaskData = dict[str, str]
 

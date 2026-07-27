@@ -3,12 +3,15 @@ import multiprocessing
 from multiprocessing.queues import Queue
 from pathlib import Path
 from tempfile import TemporaryDirectory
+
 import whisperx
 from whisperx.utils import get_writer
+
+from common import ProcessEvent, get_output_dir, get_waiting_file
 from config import Settings
 from tasks.task import Task
+
 from .base import BaseProvider, OnEventCallback
-from common import get_waiting_file, get_output_dir, ProcessEvent
 
 
 class WhisperXProvider(BaseProvider):

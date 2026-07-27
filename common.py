@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from typing import Any, Literal, TYPE_CHECKING, TypeGuard, get_args
-from config import get_settings
+from typing import TYPE_CHECKING, Any, Literal, TypeGuard, get_args
 
+from config import get_settings
 
 if TYPE_CHECKING:
     from constants import ProcessEventType

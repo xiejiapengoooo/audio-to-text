@@ -1,6 +1,5 @@
 import logging
 
-
 logging.basicConfig(
     format="%(name)s %(levelname)-8s %(asctime)s %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",

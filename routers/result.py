@@ -1,8 +1,9 @@
 from typing import Any
+
 from fastapi import APIRouter
+
 from common import get_output_dir
 from routers.dependencies import CurrentSession
-
 
 router = APIRouter()
 
