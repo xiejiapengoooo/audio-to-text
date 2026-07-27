@@ -11,7 +11,12 @@ from tasks.task import Task
 class BaseProvider(ABC):
     def __init__(self, provider_name: str, settings: Settings):
         self._settings = settings
+        self._provider_name = provider_name
         self._logger = get_logger(provider_name)
+
+    def __setstate__(self, state: dict[str, Any]) -> None:
+        vars(self).update(state)
+        self._logger = get_logger(self._provider_name)
 
     @abstractmethod
     def run(self, task: Task) -> None:
