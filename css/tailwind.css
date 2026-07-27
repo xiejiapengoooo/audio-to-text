@@ -1,7 +1,0 @@
-@import "tailwindcss";
-
-@source "../static/index.html";
-
-@plugin "daisyui" {
-  themes: olive-sage --default;
-}
