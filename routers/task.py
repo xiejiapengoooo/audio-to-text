@@ -4,6 +4,7 @@ import anyio
 from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 from constants import DEFAULT_MODEL, Model
 from routers.dependencies import CurrentSession
+from tasks.task import TaskData
 
 
 router = APIRouter()
@@ -13,7 +14,7 @@ router = APIRouter()
 async def get_task(
     request: Request,
     session: CurrentSession,
-) -> dict[str, str | None] | None:
+) -> TaskData | None:
     task = request.app.state.task_runner.current_task
     if task is None or task.session_id != session.session_id:
         return None
@@ -25,7 +26,7 @@ async def get_task(
 async def get_tasks(
     request: Request,
     session: CurrentSession,
-) -> list[dict[str, str | None]]:
+) -> list[TaskData]:
     task_manager = request.app.state.task_manager
     tasks = await task_manager.get_tasks(session.session_id)
 

@@ -7,7 +7,7 @@ from .manager import TaskManager
 from .task import Task
 from providers.base import BaseProvider
 from constants import DEFAULT_MODEL, Model
-from common import get_waiting_file
+from common import get_waiting_file, ProcessEvent
 
 
 class TaskRunner:
@@ -57,7 +57,13 @@ class TaskRunner:
             if provider is None:
                 raise RuntimeError("Default task provider is not configured")
 
-            await to_thread.run_sync(provider.run, task)
+            def on_event(event: ProcessEvent) -> None:
+                message = event.get("message")
+                current_task = self._current_task
+                if current_task is not None and current_task is task and isinstance(message, str):
+                    current_task.set_status_message(message)
+
+            await to_thread.run_sync(provider.run, task, on_event)
             self._logger.info("Task %s completed", task.task_id)
         except Exception:
             self._logger.exception("Task %s failed", task.task_id)

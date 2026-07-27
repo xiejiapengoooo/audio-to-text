@@ -1,12 +1,19 @@
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Iterable
 from multiprocessing.context import SpawnContext
+from multiprocessing.queues import Queue
+from queue import Empty
 from typing import Any
 from pathlib import Path
 import torch
+from common import ProcessEvent, create_process_event
 from config import Settings
 from logger import get_logger
 from tasks.task import Task
+from constants import ProcessEventType
+
+
+type OnEventCallback = Callable[[ProcessEvent], None]
 
 class BaseProvider(ABC):
     def __init__(self, provider_name: str, settings: Settings):
@@ -19,25 +26,65 @@ class BaseProvider(ABC):
         self._logger = get_logger(self._provider_name)
 
     @abstractmethod
-    def run(self, task: Task) -> None:
+    def run(
+        self,
+        task: Task,
+        on_event: OnEventCallback,
+    ) -> None:
         pass
 
     @staticmethod
     def output(result: Any, audio_path: Path) -> None:
         pass
 
+    def _emit_event(
+        self,
+        event_queue: Queue[ProcessEvent],
+        event: ProcessEvent,
+    ) -> None:
+        event_queue.put(event)
+
+    def _emit_log_event(
+        self,
+        event_queue: Queue[ProcessEvent],
+        message: str,
+    ) -> None:
+        self._emit_event(event_queue, create_process_event(ProcessEventType.LOG, message=message))
+
     @staticmethod
     def _run_process(
         ctx: SpawnContext,
-        target: Callable[..., None],
         name: str,
+        target: Callable[..., None],
+        on_event: OnEventCallback,
         args: Iterable[Any] = (),
     ) -> None:
-        process = ctx.Process(target=target, name=name, args=args)
+        event_queue = ctx.Queue()
+        process = ctx.Process(
+            target=target,
+            name=name,
+            args=(*args, event_queue),
+        )
 
         try:
             process.start()
+            while process.is_alive():
+                try:
+                    event = event_queue.get(timeout=0.1)
+                except Empty:
+                    continue
+
+                on_event(event)
+
             process.join()
+
+            while True:
+                try:
+                    event = event_queue.get_nowait()
+                except Empty:
+                    break
+
+                on_event(event)
 
             if process.exitcode != 0:
                 raise RuntimeError(
@@ -49,6 +96,8 @@ class BaseProvider(ABC):
                 process.join()
 
             process.close()
+            event_queue.close()
+            event_queue.join_thread()
 
     @staticmethod
     def _get_device():

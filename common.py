@@ -1,8 +1,17 @@
-from typing import Literal, TypeGuard, get_args, Any
+from __future__ import annotations
+
+from typing import Any, Literal, TYPE_CHECKING, TypeGuard, get_args
 from config import get_settings
 
 
+if TYPE_CHECKING:
+    from constants import ProcessEventType
+
+
 Model = Literal["whisperx"]
+
+
+type ProcessEvent = dict[str, Any]
 
 
 def is_model(value: Any) -> TypeGuard[Model]:
@@ -21,3 +30,7 @@ def get_waiting_file(filename: str):
 def get_output_dir():
     get_settings().output_dir.mkdir(parents=True, exist_ok=True)
     return get_settings().output_dir
+
+
+def create_process_event(event_type: ProcessEventType, **payload: Any) -> ProcessEvent:
+    return {"type": event_type, **payload}

@@ -1,13 +1,14 @@
 import json
 import multiprocessing
+from multiprocessing.queues import Queue
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import whisperx
 from whisperx.utils import get_writer
 from config import Settings
 from tasks.task import Task
-from .base import BaseProvider
-from common import get_waiting_file, get_output_dir
+from .base import BaseProvider, OnEventCallback
+from common import get_waiting_file, get_output_dir, ProcessEvent
 
 
 class WhisperXProvider(BaseProvider):
@@ -33,46 +34,56 @@ class WhisperXProvider(BaseProvider):
             model_cache_only=bool(self._settings.model_download_dir),
         )
 
-    def _handle_transcription(self, temp_dir: Path, waiting_audio: Path):
-        self._logger.info("transcription process start")
+    def _handle_transcription(
+        self,
+        temp_dir: Path,
+        waiting_audio: Path,
+        event_queue: Queue[ProcessEvent],
+    ) -> None:
+        self._emit_log_event(event_queue, "transcription process start")
 
-        self._logger.info("load transcription model")
+        self._emit_log_event(event_queue, "load transcription model")
         model = self._get_transcription_model()
-        self._logger.info("transcription model loaded")
+        self._emit_log_event(event_queue, "transcription model loaded")
 
-        self._logger.info("load transcription audio")
+        self._emit_log_event(event_queue, "load transcription audio")
         audio = whisperx.load_audio(waiting_audio)
-        self._logger.info("transcription audio loaded")
+        self._emit_log_event(event_queue, "transcription audio loaded")
 
-        self._logger.info("transcribe audio")
+        self._emit_log_event(event_queue, "transcribe audio")
         result = model.transcribe(audio, batch_size=16)
-        self._logger.info("audio transcribed")
+        self._emit_log_event(event_queue, "audio transcribed")
 
-        self._logger.info("write transcription result")
+        self._emit_log_event(event_queue, "write transcription result")
         writer = get_writer("json", str(temp_dir))
         writer(result, str(waiting_audio), {})
-        self._logger.info("transcription result written")
+        self._emit_log_event(event_queue, "transcription result written")
 
-    def _handle_alignment(self, temp_dir: Path, waiting_audio: Path):
-        self._logger.info("alignment process start")
+    def _handle_alignment(
+        self,
+        temp_dir: Path,
+        waiting_audio: Path,
+        event_queue: Queue[ProcessEvent],
+    ) -> None:
+        self._emit_log_event(event_queue, "alignment process start")
 
-        self._logger.info("load transcription result")
+        self._emit_log_event(event_queue, "load transcription result")
         transcription_path = temp_dir / f"{waiting_audio.stem}.json"
         with transcription_path.open(encoding="utf-8") as file:
             result = json.load(file)
-        self._logger.info("transcription result loaded")
+        self._emit_log_event(event_queue, "transcription result loaded")
 
         language = result["language"]
         if result["segments"]:
-            self._logger.info("load alignment model")
+            self._emit_log_event(event_queue, "load alignment model")
             model, metadata = self._get_align_model(language)
-            self._logger.info("alignment model loaded")
+            self._emit_log_event(event_queue, "alignment model loaded")
 
-            self._logger.info("load alignment audio")
+            self._emit_log_event(event_queue, "load alignment audio")
             audio = whisperx.load_audio(waiting_audio)
-            self._logger.info("alignment audio loaded")
+            self._emit_log_event(event_queue, "alignment audio loaded")
 
-            self._logger.info("align audio")
+            self._emit_log_event(event_queue, "align audio")
             result = whisperx.align(
                 result["segments"],
                 model,
@@ -81,15 +92,19 @@ class WhisperXProvider(BaseProvider):
                 self._get_device(),
                 return_char_alignments=True,
             )
-            self._logger.info("audio aligned")
+            self._emit_log_event(event_queue, "audio aligned")
 
         result["language"] = language
 
-        self._logger.info("output result")
+        self._emit_log_event(event_queue, "output result")
         self.output(result, waiting_audio)
-        self._logger.info("result written")
+        self._emit_log_event(event_queue, "result written")
 
-    def run(self, task: Task) -> None:
+    def run(
+        self,
+        task: Task,
+        on_event: OnEventCallback,
+    ) -> None:
         waiting_audio = get_waiting_file(task.filename)
         if not waiting_audio.is_file():
             raise FileNotFoundError(f"Task audio not found: {task.filename}")
@@ -100,16 +115,19 @@ class WhisperXProvider(BaseProvider):
 
             self._run_process(
                 mp_ctx,
-                self._handle_transcription,
                 "Transcription",
+                self._handle_transcription,
+                on_event,
                 args=(temp_dir, waiting_audio),
             )
 
             self._run_process(
                 mp_ctx,
-                self._handle_alignment,
                 "Alignment",
+                self._handle_alignment,
+                on_event,
                 args=(temp_dir, waiting_audio),
+
             )
 
     @staticmethod
