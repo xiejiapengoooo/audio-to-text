@@ -79,15 +79,14 @@ class WhisperXProvider(BaseProvider):
                 metadata,
                 audio,
                 self._get_device(),
-                return_char_alignments=False,
+                return_char_alignments=True,
             )
             self._logger.info("audio aligned")
 
         result["language"] = language
 
         self._logger.info("output result")
-        writer = get_writer("json", str(get_output_dir()))
-        writer(result, str(waiting_audio), {})
+        self.output(result, waiting_audio)
         self._logger.info("result written")
 
     def run(self, task: Task) -> None:
@@ -111,4 +110,50 @@ class WhisperXProvider(BaseProvider):
                 self._handle_alignment,
                 "Alignment",
                 args=(temp_dir, waiting_audio),
+            )
+
+    @staticmethod
+    def output(result: dict, audio_path: Path) -> None:
+        chars = []
+        segments = []
+
+        for segment in result.get("segments", []):
+            segment_chars = [
+                {
+                    "start": char.get("start"),
+                    "end": char.get("end"),
+                    "score": char.get("score"),
+                    "char": char.get("word", ""),
+                }
+                for char in segment.get("words", [])
+            ]
+            score = (
+                sum(char["score"] or 0 for char in segment_chars)
+                / len(segment_chars)
+                if segment_chars
+                else 0
+            )
+
+            chars.extend(segment_chars)
+            segments.append(
+                {
+                    "start": segment.get("start"),
+                    "end": segment.get("end"),
+                    "text": segment.get("text", ""),
+                    "chars": segment_chars,
+                    "score": score,
+                }
+            )
+
+        output_path = get_output_dir() / f"{audio_path.stem}.json"
+        with output_path.open("w", encoding="utf-8") as file:
+            json.dump(
+                {
+                    "language": result.get("language", ""),
+                    "text": "".join(segment["text"] for segment in segments),
+                    "chars": chars,
+                    "segments": segments,
+                },
+                file,
+                ensure_ascii=False,
             )

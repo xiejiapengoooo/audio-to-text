@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Callable, Iterable
 from multiprocessing.context import SpawnContext
 from typing import Any
+from pathlib import Path
 import torch
 from config import Settings
 from logger import get_logger
@@ -14,6 +15,10 @@ class BaseProvider(ABC):
 
     @abstractmethod
     def run(self, task: Task) -> None:
+        pass
+
+    @staticmethod
+    def output(result: Any, audio_path: Path) -> None:
         pass
 
     @staticmethod
