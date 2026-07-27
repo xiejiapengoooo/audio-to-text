@@ -61,11 +61,6 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-button,
-input {
-  font: inherit;
-}
-
 [hidden] {
   display: none !important;
 }
@@ -392,6 +387,7 @@ input {
 }
 
 .segment-time {
+  @apply leading-6;
   padding-top: 2px;
   color: var(--color-primary);
   font-size: 11px;

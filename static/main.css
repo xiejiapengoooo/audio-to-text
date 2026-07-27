@@ -1331,9 +1331,6 @@ body {
   font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
   -webkit-font-smoothing: antialiased;
 }
-button, input {
-  font: inherit;
-}
 [hidden] {
   display: none !important;
 }
@@ -1650,6 +1647,8 @@ button, input {
   background: var(--color-base-200);
 }
 .segment-time {
+  --tw-leading: calc(var(--spacing) * 6);
+  line-height: calc(var(--spacing) * 6);
   padding-top: 2px;
   color: var(--color-primary);
   font-size: 11px;
