@@ -237,6 +237,7 @@
           sessionId: "",
           sessionPromise: null,
           refreshPromise: null,
+          pollTimer: null,
           selectedFile: null,
           selectedFileUrl: "",
           previewText: "",
@@ -756,6 +757,25 @@
           }
         }
 
+        function clearPollingTimer() {
+          if (state.pollTimer !== null) {
+            window.clearTimeout(state.pollTimer);
+            state.pollTimer = null;
+          }
+        }
+
+        function schedulePolling() {
+          clearPollingTimer();
+          if (document.hidden || (!state.currentTask && !state.tasks.length)) {
+            return;
+          }
+
+          state.pollTimer = window.setTimeout(() => {
+            state.pollTimer = null;
+            void refreshData();
+          }, POLL_INTERVAL);
+        }
+
         async function refreshData(options = {}) {
           if (state.refreshPromise) {
             return state.refreshPromise;
@@ -768,6 +788,7 @@
           } finally {
             if (state.refreshPromise === refreshPromise) {
               state.refreshPromise = null;
+              schedulePolling();
             }
           }
         }
@@ -1242,11 +1263,14 @@
           });
 
           document.addEventListener("visibilitychange", () => {
-            if (!document.hidden) {
-              void refreshData();
+            if (document.hidden) {
+              clearPollingTimer();
+              return;
             }
+            void refreshData();
           });
           window.addEventListener("beforeunload", () => {
+            clearPollingTimer();
             releaseSelectedFileUrl();
             abortResultPreview();
           });
@@ -1271,12 +1295,6 @@
               "error",
             );
           }
-
-          window.setInterval(() => {
-            if (!document.hidden) {
-              void refreshData();
-            }
-          }, POLL_INTERVAL);
         }
 
         void initialize();

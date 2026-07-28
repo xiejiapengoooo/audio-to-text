@@ -492,11 +492,7 @@ body {
 
   .result-row .data-actions {
     width: 100%;
-    padding-left: 54px;
-  }
-
-  .result-row .data-actions > * {
-    flex: 1;
+    justify-content: flex-end;
   }
 
   .segment-item {
