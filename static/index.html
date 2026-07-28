@@ -156,16 +156,16 @@
     <dialog class="modal" id="resultDialog" aria-labelledby="dialogTitle">
       <div class="modal-box result-dialog bg-base-100">
         <div class="dialog-layout">
-          <div class="flex items-start justify-between gap-4 border-b border-base-300 px-5 py-5 sm:px-6">
-            <div class="min-w-0">
-              <h2 class="truncate-line text-lg font-semibold tracking-tight" id="dialogTitle">Transcription Result</h2>
-              <p class="mt-1 mb-0 text-xs text-base-content/50" id="dialogMeta"></p>
+          <div class="border-b border-base-300 px-5 py-5 sm:px-6">
+            <div class="flex min-w-0 items-center gap-4">
+              <h2 class="truncate-line min-w-0 flex-1 text-lg font-semibold tracking-tight" id="dialogTitle">Transcription Result</h2>
+              <button class="btn btn-ghost btn-sm btn-square flex-none" id="closeDialogButton" type="button" aria-label="Close result preview">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="m6 6 12 12M18 6 6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                </svg>
+              </button>
             </div>
-            <button class="btn btn-ghost btn-sm btn-square flex-none" id="closeDialogButton" type="button" aria-label="Close result preview">
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="m6 6 12 12M18 6 6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-              </svg>
-            </button>
+            <p class="mt-1 mb-0 text-xs text-base-content/50" id="dialogMeta"></p>
           </div>
 
           <div class="dialog-body p-5 sm:p-6" id="dialogBody"></div>
@@ -1073,10 +1073,10 @@
           loading.className = "grid min-h-64 place-items-center text-sm text-base-content/50";
 
           const content = document.createElement("div");
-          content.className = "text-center";
+          content.className = "flex items-center gap-3";
 
           const spinner = document.createElement("span");
-          spinner.className = "loading loading-spinner loading-md mb-3 block text-primary";
+          spinner.className = "loading loading-spinner loading-md flex-none text-primary";
           content.append(spinner, document.createTextNode("Loading transcription result…"));
           loading.append(content);
           elements.dialogBody.replaceChildren(loading);

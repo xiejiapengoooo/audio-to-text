@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     space_id: str | None = os.getenv("SPACE_ID")
 
     app_name: str = "audio-to-text"
-    host: str = "0.0.0.0" if space_id else "127.0.0.1"
+    host: str = "0.0.0.0"
     port: int = 7860 if space_id else 7861
     cors_origins: list[str] = Field(default_factory=lambda: ["*"])
 
