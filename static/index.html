@@ -151,8 +151,6 @@
       </div>
     </main>
 
-    <div class="toast-region" id="toastRegion" aria-live="polite" aria-atomic="true"></div>
-
     <dialog class="modal" id="resultDialog" aria-labelledby="dialogTitle">
       <div class="modal-box result-dialog bg-base-100">
         <div class="dialog-layout">
@@ -274,7 +272,6 @@
           resultCount: byId("resultCount"),
           queueContent: byId("queueContent"),
           resultsContent: byId("resultsContent"),
-          toastRegion: byId("toastRegion"),
           resultDialog: byId("resultDialog"),
           dialogTitle: byId("dialogTitle"),
           dialogMeta: byId("dialogMeta"),
@@ -485,7 +482,25 @@
           return svg;
         }
 
+        function getToastRegion() {
+          const host = elements.resultDialog.open ? elements.resultDialog : document.body;
+          const existingRegion = Array.from(host.children).find(
+            (child) => child.classList.contains("toast-region"),
+          );
+          if (existingRegion) {
+            return existingRegion;
+          }
+
+          const region = document.createElement("div");
+          region.className = "toast-region";
+          region.setAttribute("aria-live", "polite");
+          region.setAttribute("aria-atomic", "true");
+          host.append(region);
+          return region;
+        }
+
         function showToast(message, type = "success") {
+          const toastRegion = getToastRegion();
           const toast = document.createElement("div");
           toast.className = `alert app-toast items-start shadow-lg ${type === "error" ? "alert-error" : "alert-success"}`;
 
@@ -498,12 +513,17 @@
           copy.textContent = message;
 
           toast.append(icon, copy);
-          elements.toastRegion.append(toast);
+          toastRegion.append(toast);
           requestAnimationFrame(() => toast.classList.add("is-visible"));
 
           window.setTimeout(() => {
             toast.classList.remove("is-visible");
-            window.setTimeout(() => toast.remove(), 200);
+            window.setTimeout(() => {
+              toast.remove();
+              if (!toastRegion.childElementCount) {
+                toastRegion.remove();
+              }
+            }, 200);
           }, 3600);
         }
 
