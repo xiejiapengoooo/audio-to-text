@@ -434,9 +434,13 @@
 
         function displayFilename(filename) {
           const prefix = state.sessionId ? `${state.sessionId}_` : "";
-          return prefix && filename.startsWith(prefix)
+          const storedFilename = prefix && filename.startsWith(prefix)
             ? filename.slice(prefix.length)
             : filename;
+          return storedFilename.replace(
+            /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}_/i,
+            "",
+          );
         }
 
         function formatBytes(bytes) {

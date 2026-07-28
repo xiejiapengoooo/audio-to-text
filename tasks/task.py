@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from threading import Event, Lock
 
-from common import Model, is_model
+from common import Model, is_model, get_waiting_file
 
 type TaskData = dict[str, str | bool]
 
@@ -30,6 +30,14 @@ class Task:
         self._cancel_event = Event()
         self._completed = False
 
+    @property
+    def filepath(self):
+        return get_waiting_file(self.filename)
+
+    @property
+    def cancel_requested(self) -> bool:
+        return self._cancel_event.is_set()
+
     def set_status_message(self, message: str) -> None:
         with self._status_message_lock:
             self.status_message = message
@@ -42,10 +50,6 @@ class Task:
 
         self.set_status_message("Cancellation requested")
         return True
-
-    @property
-    def cancel_requested(self) -> bool:
-        return self._cancel_event.is_set()
 
     def raise_if_cancelled(self) -> None:
         if self.cancel_requested:
@@ -64,11 +68,10 @@ class Task:
 
         return {
             "task_id": self.task_id,
-            "filename": self.filename,
             "session_id": self.session_id,
             "model": self.model,
             "status_message": status_message,
-            "cancel_requested": self.cancel_requested,
+            "filename": self.filename,
         }
 
     @classmethod
@@ -81,8 +84,7 @@ class Task:
         session_id = data.get("session_id")
         model = data.get("model")
         status_message = data.get("status_message", "")
-        if filename is None:
-            filename = data.get("audio_filename")
+
         if not isinstance(task_id, str) or not task_id:
             raise ValueError("Task id must be a non-empty string")
         if not isinstance(filename, str) or not filename:
@@ -96,8 +98,8 @@ class Task:
 
         return cls(
             task_id=task_id,
-            filename=filename,
             session_id=session_id,
+            filename=filename,
             model=model,
             status_message=status_message,
         )

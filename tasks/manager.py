@@ -12,7 +12,7 @@ from config import Settings
 from constants import Model
 from logger import get_logger
 
-from .task import Task
+from .task import Task, TaskData
 
 
 class TaskManager:
@@ -38,6 +38,7 @@ class TaskManager:
         filename: str,
         session_id: str,
         model: Model,
+        temporary_audio_path: Path,
     ) -> Task:
         async with self._condition:
             task_id = str(uuid.uuid4())
@@ -53,14 +54,23 @@ class TaskManager:
             task = Task(
                 task_id=task_id,
                 session_id=session_id,
-                filename=filename,
+                filename=f"{session_id}_{task_id}_{filename}",
                 model=model,
             )
+            self._settings.waiting_dir.mkdir(parents=True, exist_ok=True)
+            temporary_audio_path.replace(task.filepath)
             self._tasks.append(task)
             try:
                 await self._save()
             except Exception:
                 self._tasks.pop()
+                try:
+                    task.filepath.unlink(missing_ok=True)
+                except OSError:
+                    self._logger.exception(
+                        "Failed to remove audio for rolled back task %s",
+                        task.task_id,
+                    )
                 raise
 
             self._condition.notify_all()
@@ -90,6 +100,45 @@ class TaskManager:
                 return None
 
             return task
+
+    async def cancel(
+        self,
+        task_id: str,
+        session_id: str,
+    ) -> TaskData | None:
+        async with self._condition:
+            running_task = self._running_task
+            if (
+                running_task is not None
+                and running_task.task_id == task_id
+                and running_task.session_id == session_id
+            ):
+                if not running_task.request_cancel():
+                    return None
+                return running_task.to_dict()
+
+            for index, task in enumerate(self._tasks):
+                if task.task_id != task_id or task.session_id != session_id:
+                    continue
+
+                self._tasks.remove(task)
+                try:
+                    await self._save()
+                except Exception:
+                    self._tasks.insert(index, task)
+                    raise
+
+                try:
+                    task.filepath.unlink(missing_ok=True)
+                except OSError:
+                    self._logger.exception(
+                        "Failed to remove audio for canceled task %s",
+                        task.task_id,
+                    )
+
+                return task.to_dict()
+
+            return None
 
     async def finish(self, task: Task) -> None:
         async with self._condition:

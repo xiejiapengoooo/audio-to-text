@@ -1,5 +1,6 @@
 from pathlib import Path
 from tempfile import NamedTemporaryFile
+from typing import cast
 
 import anyio
 from fastapi import APIRouter, HTTPException, Request, UploadFile
@@ -33,6 +34,20 @@ async def get_tasks(
     tasks = await task_manager.get_tasks(session.session_id)
 
     return [task.to_dict() for task in tasks]
+
+
+@router.delete("/tasks/{task_id}")
+async def cancel_task(
+    task_id: str,
+    request: Request,
+    session: CurrentSession,
+) -> TaskData:
+    task_manager = request.app.state.task_manager
+    taskData = await task_manager.cancel(task_id, session.session_id)
+    if taskData is None:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    return taskData
 
 
 @router.post("/task")
@@ -72,8 +87,6 @@ async def create_task(
         uploading_dir = waiting_dir / ".uploading"
         uploading_dir.mkdir(parents=True, exist_ok=True)
 
-        stored_filename = f"{session.session_id}_{filename}"
-        audio_path = waiting_dir / stored_filename
         with NamedTemporaryFile(
             dir=uploading_dir,
             suffix=".part",
@@ -85,18 +98,13 @@ async def create_task(
             while chunk := await file.read(1024 * 1024):
                 await output.write(chunk)
 
-        temporary_path.replace(audio_path)
-
         task_manager = request.app.state.task_manager
-        try:
-            task = await task_manager.create(
-                stored_filename,
-                session.session_id,
-                model,
-            )
-        except Exception:
-            audio_path.unlink(missing_ok=True)
-            raise
+        task = await task_manager.create(
+            filename,
+            session.session_id,
+            model,
+            temporary_path,
+        )
 
         return task.task_id
     finally:

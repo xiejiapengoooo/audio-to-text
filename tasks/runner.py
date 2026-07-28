@@ -2,7 +2,7 @@ from collections.abc import Mapping
 
 from anyio import sleep, to_thread
 
-from common import ProcessEvent, get_waiting_file
+from common import ProcessEvent
 from config import Settings
 from constants import DEFAULT_MODEL, Model
 from logger import get_logger
@@ -10,7 +10,7 @@ from providers.base import BaseProvider
 from sessions.manager import SessionManager
 
 from .manager import TaskManager
-from .task import Task
+from .task import Task, TaskCancelledError
 
 
 class TaskRunner:
@@ -56,19 +56,22 @@ class TaskRunner:
 
             def on_event(event: ProcessEvent) -> None:
                 message = event.get("message")
-                if isinstance(message, str):
+                if isinstance(message, str) and not task.cancel_requested:
                     task.set_status_message(message)
 
+            task.raise_if_cancelled()
             await to_thread.run_sync(provider.run, task, on_event)
             self._logger.info("Task %s completed", task.task_id)
+        except TaskCancelledError:
+            self._logger.info("Task %s canceled", task.task_id)
         except Exception:
             self._logger.exception("Task %s failed", task.task_id)
         finally:
+            await self._task_manager.finish(task)
             try:
-                get_waiting_file(task.filename).unlink(missing_ok=True)
+                task.filepath.unlink(missing_ok=True)
             except OSError:
                 self._logger.exception(
                     "Failed to remove audio for task %s",
                     task.task_id,
                 )
-            await self._task_manager.finish(task)

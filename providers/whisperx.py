@@ -6,7 +6,7 @@ from tempfile import TemporaryDirectory
 
 import whisperx
 
-from common import ProcessEvent, get_waiting_file, get_output_file
+from common import ProcessEvent, get_output_file
 from config import Settings
 from tasks.task import Task
 
@@ -39,7 +39,7 @@ class WhisperXProvider(BaseProvider):
     def _handle_transcription(
         self,
         transcription_temporary_file: Path,
-        waiting_audio: Path,
+        waiting_file: Path,
         event_queue: Queue[ProcessEvent],
     ) -> None:
         self._emit_log_event(event_queue, "transcription process start")
@@ -49,7 +49,7 @@ class WhisperXProvider(BaseProvider):
         self._emit_log_event(event_queue, "transcription model loaded")
 
         self._emit_log_event(event_queue, "load transcription audio")
-        audio = whisperx.load_audio(waiting_audio)
+        audio = whisperx.load_audio(waiting_file)
         self._emit_log_event(event_queue, "transcription audio loaded")
 
         self._emit_log_event(event_queue, "transcribe audio")
@@ -64,7 +64,7 @@ class WhisperXProvider(BaseProvider):
     def _handle_alignment(
         self,
         transcription_temporary_file: Path,
-        waiting_audio: Path,
+        waiting_file: Path,
         temporary_output_path: Path,
         event_queue: Queue[ProcessEvent],
     ) -> None:
@@ -82,7 +82,7 @@ class WhisperXProvider(BaseProvider):
             self._emit_log_event(event_queue, "alignment model loaded")
 
             self._emit_log_event(event_queue, "load alignment audio")
-            audio = whisperx.load_audio(waiting_audio)
+            audio = whisperx.load_audio(waiting_file)
             self._emit_log_event(event_queue, "alignment audio loaded")
 
             self._emit_log_event(event_queue, "align audio")
@@ -109,16 +109,16 @@ class WhisperXProvider(BaseProvider):
     ) -> None:
         task.raise_if_cancelled()
 
-        waiting_audio = get_waiting_file(task.filename)
-        if not waiting_audio.is_file():
+        waiting_file = task.filepath
+        if not waiting_file.is_file():
             raise FileNotFoundError(f"Task audio not found: {task.filename}")
 
         mp_ctx = multiprocessing.get_context("spawn")
-        output_path = get_output_file(f"{waiting_audio.stem}.json")
+        output_path = get_output_file(f"{waiting_file.stem}.json")
         temporary_output_path = get_output_file(f".{task.task_id}.tmp")
         try:
             with TemporaryDirectory(prefix=f"{self._settings.app_name}-") as temp_dir:
-                transcription_temporary_file = Path(temp_dir) / f"{waiting_audio.stem}.json"
+                transcription_temporary_file = Path(temp_dir) / f"{waiting_file.stem}.json"
 
                 self._run_process(
                     mp_ctx,
@@ -126,7 +126,7 @@ class WhisperXProvider(BaseProvider):
                     task,
                     self._handle_transcription,
                     on_event,
-                    args=(transcription_temporary_file, waiting_audio),
+                    args=(transcription_temporary_file, waiting_file),
                 )
 
                 self._run_process(
@@ -135,7 +135,7 @@ class WhisperXProvider(BaseProvider):
                     task,
                     self._handle_alignment,
                     on_event,
-                    args=(transcription_temporary_file, waiting_audio, temporary_output_path),
+                    args=(transcription_temporary_file, waiting_file, temporary_output_path),
                 )
 
                 task.raise_if_cancelled()
