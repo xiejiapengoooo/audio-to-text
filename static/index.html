@@ -67,6 +67,15 @@
               <audio class="audio-preview mt-4" id="audioPreview" controls preload="metadata"></audio>
             </div>
 
+            <label class="grid gap-2" for="outputFileType">
+              <span class="text-sm font-semibold">Export file type</span>
+              <select class="select w-full" id="outputFileType">
+                <option value="json">JSON — transcript with timeline data</option>
+                <option value="txt">TXT — plain transcript text</option>
+              </select>
+              <span class="text-xs leading-5 text-base-content/50">Choose the format generated for this transcription.</span>
+            </label>
+
             <div id="uploadProgress" hidden>
               <div class="mb-2 flex items-center justify-between text-xs text-base-content/55">
                 <span id="progressLabel">Uploading</span>
@@ -197,7 +206,12 @@
         const SESSION_KEY = "session_id";
         const POLL_INTERVAL = 5000;
         const DEFAULT_MODEL = "whisperx";
+        const DEFAULT_OUTPUT_FILE_TYPE = "json";
         const CANCELLATION_REQUESTED = "Cancellation requested";
+        const OUTPUT_FILE_TYPE_LABELS = {
+          json: "JSON",
+          txt: "TXT",
+        };
         const API = {
           session: "/session",
           currentTask: "/task",
@@ -270,6 +284,7 @@
           progressLabel: byId("progressLabel"),
           progressValue: byId("progressValue"),
           progressBar: byId("progressBar"),
+          outputFileType: byId("outputFileType"),
           uploadButton: byId("uploadButton"),
           uploadButtonLabel: byId("uploadButtonLabel"),
           queueCount: byId("queueCount"),
@@ -434,6 +449,10 @@
         function getExtension(filename) {
           const lastDot = filename.lastIndexOf(".");
           return lastDot >= 0 ? filename.slice(lastDot).toLowerCase() : "";
+        }
+
+        function getOutputFileTypeLabel(outputFileType) {
+          return OUTPUT_FILE_TYPE_LABELS[outputFileType] || outputFileType.toUpperCase();
         }
 
         function displayFilename(filename) {
@@ -660,7 +679,8 @@
 
             const meta = document.createElement("p");
             meta.className = "mt-1 mb-0 text-xs text-base-content/45";
-            meta.textContent = `${task.model || DEFAULT_MODEL} · ${isProcessing ? task.status_message || "Transcribing and aligning" : "Waiting"}`;
+            const outputFileType = task.output_file_type || DEFAULT_OUTPUT_FILE_TYPE;
+            meta.textContent = `${task.model || DEFAULT_MODEL} · ${getOutputFileTypeLabel(outputFileType)} · ${isProcessing ? task.status_message || "Transcribing and aligning" : "Waiting"}`;
 
             const status = document.createElement("span");
             status.className = `badge badge-sm flex-none ${isProcessing ? "badge-warning" : "badge-ghost"}`;
@@ -1042,6 +1062,7 @@
             state.isUploading || state.isReconnecting || waitingForSession;
           elements.removeFileButton.disabled = state.isUploading;
           elements.audioInput.disabled = state.isUploading;
+          elements.outputFileType.disabled = state.isUploading;
           elements.connectionButton.disabled = state.isUploading || state.isReconnecting;
           elements.dropZone.setAttribute("aria-disabled", String(state.isUploading));
 
@@ -1101,7 +1122,7 @@
             : "Upload failed. Check your network connection.";
         }
 
-        function sendTaskUpload(file, sessionId) {
+        function sendTaskUpload(file, sessionId, outputFileType) {
           return new Promise((resolve, reject) => {
             const xhr = new XMLHttpRequest();
             xhr.open("POST", API.currentTask);
@@ -1131,20 +1152,21 @@
             const formData = new FormData();
             formData.append("file", normalizeUploadFile(file), file.name);
             formData.append("model", DEFAULT_MODEL);
+            formData.append("output_file_type", outputFileType);
             xhr.send(formData);
           });
         }
 
-        async function submitTask(file, allowSessionRetry = true) {
+        async function submitTask(file, outputFileType, allowSessionRetry = true) {
           const sessionId = await ensureSession();
           try {
-            return await sendTaskUpload(file, sessionId);
+            return await sendTaskUpload(file, sessionId, outputFileType);
           } catch (error) {
             if (error?.status === 404 && allowSessionRetry) {
               invalidateSession(sessionId);
               elements.progressLabel.textContent = "Session refreshed. Retrying upload";
               updateProgress(0);
-              return submitTask(file, false);
+              return submitTask(file, outputFileType, false);
             }
             throw error;
           }
@@ -1155,6 +1177,7 @@
           if (!file || state.isUploading) {
             return;
           }
+          const outputFileType = elements.outputFileType.value || DEFAULT_OUTPUT_FILE_TYPE;
 
           state.isUploading = true;
           elements.uploadProgress.hidden = false;
@@ -1163,7 +1186,7 @@
           updateControls();
 
           try {
-            await submitTask(file);
+            await submitTask(file, outputFileType);
           } catch (error) {
             if (!state.sessionId || !error?.status || error.status >= 500) {
               setConnectionStatus("offline");
@@ -1176,7 +1199,7 @@
             updateControls();
           }
 
-          showToast(`"${file.name}" was added to the transcription queue`);
+          showToast(`"${file.name}" was added to the transcription queue as ${getOutputFileTypeLabel(outputFileType)}`);
           clearSelectedFile();
           await refreshAfterCurrentRequest();
         }
@@ -1313,21 +1336,28 @@
               throw createRequestError(`Failed to load result (${response.status})`, response.status);
             }
 
-            const data = await response.json();
+            const outputFileType = getExtension(result.name).slice(1);
+            const data = outputFileType === "json"
+              ? await response.json()
+              : { text: await response.text() };
             if (state.previewController !== controller) {
               return;
             }
 
             renderResultPreview(data);
-            const language = typeof data?.language === "string"
-              ? data.language.toUpperCase()
-              : "";
-            const segmentCount = Array.isArray(data?.segments) ? data.segments.length : 0;
-            elements.dialogMeta.textContent = [
-              baseMeta,
-              language ? `Language ${language}` : "",
-              segmentCount ? `${segmentCount} ${segmentCount === 1 ? "segment" : "segments"}` : "",
-            ].filter(Boolean).join(" · ");
+            if (outputFileType === "json") {
+              const language = typeof data?.language === "string"
+                ? data.language.toUpperCase()
+                : "";
+              const segmentCount = Array.isArray(data?.segments) ? data.segments.length : 0;
+              elements.dialogMeta.textContent = [
+                baseMeta,
+                language ? `Language ${language}` : "",
+                segmentCount ? `${segmentCount} ${segmentCount === 1 ? "segment" : "segments"}` : "",
+              ].filter(Boolean).join(" · ");
+            } else {
+              elements.dialogMeta.textContent = `${baseMeta} · ${getOutputFileTypeLabel(outputFileType)}`;
+            }
           } catch (error) {
             if (error?.name === "AbortError" || state.previewController !== controller) {
               return;
