@@ -1,6 +1,5 @@
 from pathlib import Path
 from tempfile import NamedTemporaryFile
-from typing import cast
 
 import anyio
 from fastapi import APIRouter, HTTPException, Request, UploadFile

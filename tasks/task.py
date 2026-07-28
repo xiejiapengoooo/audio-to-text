@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from threading import Event, Lock
 
-from common import Model, is_model, get_waiting_file
+from common import Model, get_waiting_file, is_model
 
 type TaskData = dict[str, str | bool]
 
