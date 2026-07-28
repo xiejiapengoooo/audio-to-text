@@ -16,8 +16,9 @@ async def get_task(
     request: Request,
     session: CurrentSession,
 ) -> TaskData | None:
-    task = request.app.state.task_runner.current_task
-    if task is None or task.session_id != session.session_id:
+    task_manager = request.app.state.task_manager
+    task = await task_manager.get_current_task(session.session_id)
+    if task is None:
         return None
 
     return task.to_dict()

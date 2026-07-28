@@ -23,6 +23,7 @@ class TaskManager:
         self._settings = settings
         self._logger = get_logger("TaskManager")
         self._tasks: deque[Task] = deque()
+        self._running_task: Task | None = None
         self._condition = Condition()
         self._tasks_file_path = settings.data_dir / "tasks.json"
 
@@ -40,7 +41,13 @@ class TaskManager:
     ) -> Task:
         async with self._condition:
             task_id = str(uuid.uuid4())
-            while any(task.task_id == task_id for task in self._tasks):
+            while (
+                any(task.task_id == task_id for task in self._tasks)
+                or (
+                    self._running_task is not None
+                    and self._running_task.task_id == task_id
+                )
+            ):
                 task_id = str(uuid.uuid4())
 
             task = Task(
@@ -62,15 +69,39 @@ class TaskManager:
 
     async def get_next(self) -> Task:
         async with self._condition:
-            await self._condition.wait_for(lambda: bool(self._tasks))
+            await self._condition.wait_for(
+                lambda: bool(self._tasks) and self._running_task is None
+            )
             task = self._tasks.popleft()
+            self._running_task = task
             try:
                 await self._save()
             except Exception:
+                self._running_task = None
                 self._tasks.appendleft(task)
                 raise
 
             return task
+
+    async def get_current_task(self, session_id: str) -> Task | None:
+        async with self._condition:
+            task = self._running_task
+            if task is None or task.session_id != session_id:
+                return None
+
+            return task
+
+    async def finish(self, task: Task) -> None:
+        async with self._condition:
+            if self._running_task is not task:
+                self._logger.warning(
+                    "Ignore finish for task %s because it is not running",
+                    task.task_id,
+                )
+                return
+
+            self._running_task = None
+            self._condition.notify_all()
 
     async def get_tasks(self, session_id: str) -> list[Task]:
         async with self._condition:

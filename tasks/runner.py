@@ -26,11 +26,6 @@ class TaskRunner:
         self._session_manager = session_manager
         self._providers = dict(providers)
         self._logger = get_logger("TaskRunner")
-        self._current_task: Task | None = None
-
-    @property
-    def current_task(self) -> Task | None:
-        return self._current_task
 
     async def run(self) -> None:
         while True:
@@ -44,7 +39,6 @@ class TaskRunner:
             await self._run_task(task)
 
     async def _run_task(self, task: Task) -> None:
-        self._current_task = task
         try:
             session = await self._session_manager.get(task.session_id)
             if session is None:
@@ -62,16 +56,14 @@ class TaskRunner:
 
             def on_event(event: ProcessEvent) -> None:
                 message = event.get("message")
-                current_task = self._current_task
-                if current_task is not None and current_task is task and isinstance(message, str):
-                    current_task.set_status_message(message)
+                if isinstance(message, str):
+                    task.set_status_message(message)
 
             await to_thread.run_sync(provider.run, task, on_event)
             self._logger.info("Task %s completed", task.task_id)
         except Exception:
             self._logger.exception("Task %s failed", task.task_id)
         finally:
-            self._current_task = None
             try:
                 get_waiting_file(task.filename).unlink(missing_ok=True)
             except OSError:
@@ -79,3 +71,4 @@ class TaskRunner:
                     "Failed to remove audio for task %s",
                     task.task_id,
                 )
+            await self._task_manager.finish(task)
