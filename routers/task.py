@@ -1,10 +1,12 @@
 from pathlib import Path
 from tempfile import NamedTemporaryFile
+from typing import Annotated
 
 import anyio
-from fastapi import APIRouter, HTTPException, Request, UploadFile
+from fastapi import APIRouter, Form, HTTPException, Request, UploadFile
 
-from constants import DEFAULT_MODEL, Model
+from common import OutputFileType
+from constants import DEFAULT_MODEL, DEFAULT_OUTPUT_FILE_TYPE, Model
 from routers.dependencies import CurrentSession
 from tasks.task import TaskData
 
@@ -54,7 +56,8 @@ async def create_task(
     request: Request,
     session: CurrentSession,
     file: UploadFile,
-    model: Model = DEFAULT_MODEL,
+    model: Annotated[Model, Form()] = DEFAULT_MODEL,
+    output_file_type: Annotated[OutputFileType, Form()] = DEFAULT_OUTPUT_FILE_TYPE,
 ) -> str:
     temporary_path: Path | None = None
 
@@ -103,6 +106,7 @@ async def create_task(
             session.session_id,
             model,
             temporary_path,
+            output_file_type,
         )
 
         return task.task_id

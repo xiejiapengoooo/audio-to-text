@@ -9,6 +9,7 @@ if TYPE_CHECKING:
 
 
 Model = Literal["whisperx"]
+OutputFileType = Literal["json", "txt"]
 
 
 type ProcessEvent = dict[str, Any]
@@ -16,6 +17,10 @@ type ProcessEvent = dict[str, Any]
 
 def is_model(value: Any) -> TypeGuard[Model]:
     return isinstance(value, str) and value in get_args(Model)
+
+
+def is_output_file_type(value: Any) -> TypeGuard[OutputFileType]:
+    return isinstance(value, str) and value in get_args(OutputFileType)
 
 
 def get_waiting_dir():

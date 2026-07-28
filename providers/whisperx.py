@@ -6,7 +6,7 @@ from tempfile import TemporaryDirectory
 
 import whisperx
 
-from common import ProcessEvent, get_output_file
+from common import OutputFileType, ProcessEvent, get_output_file
 from config import Settings
 from tasks.task import Task
 
@@ -66,6 +66,7 @@ class WhisperXProvider(BaseProvider):
         transcription_temporary_file: Path,
         waiting_file: Path,
         temporary_output_path: Path,
+        output_file_type: OutputFileType,
         event_queue: Queue[ProcessEvent],
     ) -> None:
         self._emit_log_event(event_queue, "alignment process start")
@@ -99,7 +100,7 @@ class WhisperXProvider(BaseProvider):
         result["language"] = language
 
         self._emit_log_event(event_queue, "output result")
-        self.output(result, temporary_output_path)
+        self.output(result, temporary_output_path, output_file_type)
         self._emit_log_event(event_queue, "result written")
 
     def run(
@@ -114,7 +115,7 @@ class WhisperXProvider(BaseProvider):
             raise FileNotFoundError(f"Task audio not found: {task.filename}")
 
         mp_ctx = multiprocessing.get_context("spawn")
-        output_path = get_output_file(f"{waiting_file.stem}.json")
+        output_path = get_output_file(f"{waiting_file.stem}.{task.output_file_type}")
         temporary_output_path = get_output_file(f".{task.task_id}.tmp")
         try:
             with TemporaryDirectory(prefix=f"{self._settings.app_name}-") as temp_dir:
@@ -135,7 +136,12 @@ class WhisperXProvider(BaseProvider):
                     task,
                     self._handle_alignment,
                     on_event,
-                    args=(transcription_temporary_file, waiting_file, temporary_output_path),
+                    args=(
+                        transcription_temporary_file,
+                        waiting_file,
+                        temporary_output_path,
+                        task.output_file_type,
+                    ),
                 )
 
                 task.raise_if_cancelled()
@@ -154,7 +160,29 @@ class WhisperXProvider(BaseProvider):
                 )
 
     @staticmethod
-    def output(result: dict, output_path: Path) -> None:
+    def output(
+        result: dict,
+        output_path: Path,
+        output_file_type: OutputFileType,
+    ) -> None:
+        if output_path == "txt":
+            lines = []
+            for segment in result.get("segments", []):
+                text = segment.get("text", "")
+                if not isinstance(text, str):
+                    continue
+
+                text = text.strip()
+                if text:
+                    lines.append(text)
+
+            with output_path.open("w", encoding="utf-8") as file:
+                file.write("\n".join(lines))
+            return
+
+        if output_file_type != "json":
+            raise ValueError(f"Unsupported output file type: {output_file_type}")
+
         chars = []
         segments = []
 

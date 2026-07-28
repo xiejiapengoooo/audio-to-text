@@ -3,7 +3,13 @@ from __future__ import annotations
 from collections.abc import Callable
 from threading import Event, Lock
 
-from common import Model, get_waiting_file, is_model
+from common import (
+    Model,
+    OutputFileType,
+    get_waiting_file,
+    is_model,
+    is_output_file_type,
+)
 
 type TaskData = dict[str, str | bool]
 
@@ -18,12 +24,14 @@ class Task:
         session_id: str,
         filename: str,
         model: Model,
+        output_file_type: OutputFileType,
         status_message: str = "",
     ):
         self.task_id = task_id
         self.session_id = session_id
         self.filename = filename
         self.model: Model = model
+        self.output_file_type: OutputFileType = output_file_type
         self.status_message = status_message
         self._status_message_lock = Lock()
         self._terminal_state_lock = Lock()
@@ -70,6 +78,7 @@ class Task:
             "task_id": self.task_id,
             "session_id": self.session_id,
             "model": self.model,
+            "output_file_type": self.output_file_type,
             "status_message": status_message,
             "filename": self.filename,
         }
@@ -83,6 +92,7 @@ class Task:
         filename = data.get("filename")
         session_id = data.get("session_id")
         model = data.get("model")
+        output_file_type = data.get("output_file_type")
         status_message = data.get("status_message", "")
 
         if not isinstance(task_id, str) or not task_id:
@@ -93,6 +103,8 @@ class Task:
             raise ValueError("Task session_id must be a non-empty string")
         if not is_model(model):
             raise ValueError("Task model is not supported")
+        if not is_output_file_type(output_file_type):
+            raise ValueError("Task output file type is not supported")
         if not isinstance(status_message, str):
             raise TypeError("Task status_message must be a string")
 
@@ -101,5 +113,6 @@ class Task:
             session_id=session_id,
             filename=filename,
             model=model,
+            output_file_type=output_file_type,
             status_message=status_message,
         )

@@ -8,7 +8,7 @@ from typing import Any
 
 import torch
 
-from common import ProcessEvent, create_process_event
+from common import OutputFileType, ProcessEvent, create_process_event
 from config import Settings
 from constants import ProcessEventType
 from logger import get_logger
@@ -35,7 +35,11 @@ class BaseProvider(ABC):
         pass
 
     @staticmethod
-    def output(result: Any, output_path: Path) -> None:
+    def output(
+        result: Any,
+        output_path: Path,
+        output_file_type: OutputFileType,
+    ) -> None:
         pass
 
     def _emit_event(

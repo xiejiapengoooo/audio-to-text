@@ -8,8 +8,9 @@ from tempfile import NamedTemporaryFile
 
 from anyio import Condition, to_thread
 
+from common import OutputFileType
 from config import Settings
-from constants import Model
+from constants import DEFAULT_OUTPUT_FILE_TYPE, Model
 from logger import get_logger
 
 from .task import Task, TaskData
@@ -38,6 +39,7 @@ class TaskManager:
         filename: str,
         session_id: str,
         model: Model,
+        output_file_type: OutputFileType,
         temporary_audio_path: Path,
     ) -> Task:
         async with self._condition:
@@ -56,6 +58,7 @@ class TaskManager:
                 session_id=session_id,
                 filename=f"{session_id}_{task_id}_{filename}",
                 model=model,
+                output_file_type=output_file_type,
             )
             self._settings.waiting_dir.mkdir(parents=True, exist_ok=True)
             temporary_audio_path.replace(task.filepath)
