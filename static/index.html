@@ -486,7 +486,7 @@
 
         function showToast(message, type = "success") {
           const toast = document.createElement("div");
-          toast.className = `alert app-toast shadow-lg ${type === "error" ? "alert-error" : "alert-success"}`;
+          toast.className = `alert app-toast items-start shadow-lg ${type === "error" ? "alert-error" : "alert-success"}`;
 
           const icon = document.createElement("span");
           icon.className = "grid size-6 flex-none place-items-center bg-current/15 text-sm font-bold";
