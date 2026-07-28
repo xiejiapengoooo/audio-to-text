@@ -12,5 +12,6 @@ pinned: false
 
 - [x] Improve the frontend styling, including the page background and overall visual design.
 - [ ] Add support for large audio files.
-- [ ] Add support for deleting files.
+- [x] Add support for deleting files.
+- [ ] Add support for discarding task.
 - [ ] Add support for exporting transcripts as TXT and SRT files.

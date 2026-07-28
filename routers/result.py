@@ -1,8 +1,9 @@
+from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException, Response, status
 
-from common import get_output_dir
+from common import get_output_dir, get_output_file
 from routers.dependencies import CurrentSession
 
 router = APIRouter()
@@ -30,3 +31,23 @@ async def get_results(
 
     results.sort(key=lambda result: (-result["modified_at"], result["name"]))
     return results
+
+
+@router.delete("/results/{filename}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_result(
+    filename: str,
+    session: CurrentSession,
+) -> Response:
+    if (
+        Path(filename.replace("\\", "/")).name != filename
+        or not filename.startswith(f"{session.session_id}_")
+    ):
+        raise HTTPException(status_code=404, detail="File not found")
+
+    file_path = get_output_file(filename)
+    try:
+        file_path.unlink()
+    except (FileNotFoundError, IsADirectoryError):
+        raise HTTPException(status_code=404, detail="File not found") from None
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

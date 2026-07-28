@@ -32,5 +32,9 @@ def get_output_dir():
     return get_settings().output_dir
 
 
+def get_output_file(filename: str):
+    return get_output_dir() / filename
+
+
 def create_process_event(event_type: ProcessEventType, **payload: Any) -> ProcessEvent:
     return {"type": event_type, **payload}
