@@ -10,7 +10,7 @@ from anyio import Condition, to_thread
 
 from common import OutputFileType
 from config import Settings
-from constants import DEFAULT_OUTPUT_FILE_TYPE, Model
+from constants import Model
 from logger import get_logger
 
 from .task import Task, TaskData

@@ -165,7 +165,7 @@ class WhisperXProvider(BaseProvider):
         output_path: Path,
         output_file_type: OutputFileType,
     ) -> None:
-        if output_path == "txt":
+        if output_file_type == "txt":
             lines = []
             for segment in result.get("segments", []):
                 text = segment.get("text", "")

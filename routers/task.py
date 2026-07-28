@@ -102,11 +102,11 @@ async def create_task(
 
         task_manager = request.app.state.task_manager
         task = await task_manager.create(
-            filename,
-            session.session_id,
-            model,
-            temporary_path,
-            output_file_type,
+            filename=filename,
+            session_id=session.session_id,
+            model=model,
+            output_file_type=output_file_type,
+            temporary_audio_path=temporary_path,
         )
 
         return task.task_id
