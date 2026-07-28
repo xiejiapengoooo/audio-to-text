@@ -1087,7 +1087,7 @@
           const controller = new AbortController();
           state.previewController = controller;
 
-          const visibleName = displayFilename(result.name || "result.json");
+          const visibleName = displayFilename(result.name);
           const baseMeta = `${formatBytes(result.size)} · ${formatDate(result.modified_at)}`;
           elements.dialogTitle.textContent = visibleName;
           elements.dialogMeta.textContent = baseMeta;
