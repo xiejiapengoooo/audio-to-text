@@ -1,10 +1,14 @@
 from __future__ import annotations
 
-from threading import Lock
+from collections.abc import Callable
+from threading import Event, Lock
 
 from common import Model, is_model
 
-type TaskData = dict[str, str]
+type TaskData = dict[str, str | bool]
+
+class TaskCancelledError(Exception):
+    pass
 
 
 class Task:
@@ -22,12 +26,36 @@ class Task:
         self.model: Model = model
         self.status_message = status_message
         self._status_message_lock = Lock()
+        self._terminal_state_lock = Lock()
+        self._cancel_event = Event()
+        self._completed = False
 
     def set_status_message(self, message: str) -> None:
         with self._status_message_lock:
             self.status_message = message
 
+    def request_cancel(self) -> bool:
+        with self._terminal_state_lock:
+            if self._completed:
+                return False
+            self._cancel_event.set()
 
+        self.set_status_message("Cancellation requested")
+        return True
+
+    @property
+    def cancel_requested(self) -> bool:
+        return self._cancel_event.is_set()
+
+    def raise_if_cancelled(self) -> None:
+        if self.cancel_requested:
+            raise TaskCancelledError()
+
+    def commit(self, callback: Callable[[], None]) -> None:
+        with self._terminal_state_lock:
+            self.raise_if_cancelled()
+            callback()
+            self._completed = True
 
     def to_dict(self) -> TaskData:
         status_message = ""
@@ -40,6 +68,7 @@ class Task:
             "session_id": self.session_id,
             "model": self.model,
             "status_message": status_message,
+            "cancel_requested": self.cancel_requested,
         }
 
     @classmethod
