@@ -5,9 +5,8 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 import whisperx
-from whisperx.utils import get_writer
 
-from common import ProcessEvent, get_output_dir, get_waiting_file
+from common import ProcessEvent, get_waiting_file, get_output_file
 from config import Settings
 from tasks.task import Task
 
@@ -39,7 +38,7 @@ class WhisperXProvider(BaseProvider):
 
     def _handle_transcription(
         self,
-        temp_dir: Path,
+        transcription_temporary_file: Path,
         waiting_audio: Path,
         event_queue: Queue[ProcessEvent],
     ) -> None:
@@ -58,21 +57,21 @@ class WhisperXProvider(BaseProvider):
         self._emit_log_event(event_queue, "audio transcribed")
 
         self._emit_log_event(event_queue, "write transcription result")
-        writer = get_writer("json", str(temp_dir))
-        writer(result, str(waiting_audio), {})
+        with transcription_temporary_file.open("w", encoding="utf-8") as file:
+            json.dump(result, file, ensure_ascii=False)
         self._emit_log_event(event_queue, "transcription result written")
 
     def _handle_alignment(
         self,
-        temp_dir: Path,
+        transcription_temporary_file: Path,
         waiting_audio: Path,
+        temporary_output_path: Path,
         event_queue: Queue[ProcessEvent],
     ) -> None:
         self._emit_log_event(event_queue, "alignment process start")
 
         self._emit_log_event(event_queue, "load transcription result")
-        transcription_path = temp_dir / f"{waiting_audio.stem}.json"
-        with transcription_path.open(encoding="utf-8") as file:
+        with transcription_temporary_file.open(encoding="utf-8") as file:
             result = json.load(file)
         self._emit_log_event(event_queue, "transcription result loaded")
 
@@ -100,7 +99,7 @@ class WhisperXProvider(BaseProvider):
         result["language"] = language
 
         self._emit_log_event(event_queue, "output result")
-        self.output(result, waiting_audio)
+        self.output(result, temporary_output_path)
         self._emit_log_event(event_queue, "result written")
 
     def run(
@@ -108,33 +107,54 @@ class WhisperXProvider(BaseProvider):
         task: Task,
         on_event: OnEventCallback,
     ) -> None:
+        task.raise_if_cancelled()
+
         waiting_audio = get_waiting_file(task.filename)
         if not waiting_audio.is_file():
             raise FileNotFoundError(f"Task audio not found: {task.filename}")
 
         mp_ctx = multiprocessing.get_context("spawn")
-        with TemporaryDirectory(prefix=f"{self._settings.app_name}-") as temp_dir:
-            temp_dir = Path(temp_dir)
+        output_path = get_output_file(f"{waiting_audio.stem}.json")
+        temporary_output_path = get_output_file(f".{task.task_id}.tmp")
+        try:
+            with TemporaryDirectory(prefix=f"{self._settings.app_name}-") as temp_dir:
+                transcription_temporary_file = Path(temp_dir) / f"{waiting_audio.stem}.json"
 
-            self._run_process(
-                mp_ctx,
-                "Transcription",
-                self._handle_transcription,
-                on_event,
-                args=(temp_dir, waiting_audio),
-            )
+                self._run_process(
+                    mp_ctx,
+                    "Transcription",
+                    task,
+                    self._handle_transcription,
+                    on_event,
+                    args=(transcription_temporary_file, waiting_audio),
+                )
 
-            self._run_process(
-                mp_ctx,
-                "Alignment",
-                self._handle_alignment,
-                on_event,
-                args=(temp_dir, waiting_audio),
+                self._run_process(
+                    mp_ctx,
+                    "Alignment",
+                    task,
+                    self._handle_alignment,
+                    on_event,
+                    args=(transcription_temporary_file, waiting_audio, temporary_output_path),
+                )
 
-            )
+                task.raise_if_cancelled()
+
+                def commit_output() -> None:
+                    temporary_output_path.replace(output_path)
+
+                task.commit(commit_output)
+        finally:
+            try:
+                temporary_output_path.unlink(missing_ok=True)
+            except OSError:
+                self._logger.exception(
+                    "Failed to remove temporary output for task %s",
+                    task.task_id,
+                )
 
     @staticmethod
-    def output(result: dict, audio_path: Path) -> None:
+    def output(result: dict, output_path: Path) -> None:
         chars = []
         segments = []
 
@@ -166,7 +186,6 @@ class WhisperXProvider(BaseProvider):
                 }
             )
 
-        output_path = get_output_dir() / f"{audio_path.stem}.json"
         with output_path.open("w", encoding="utf-8") as file:
             json.dump(
                 {

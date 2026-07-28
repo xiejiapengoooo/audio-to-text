@@ -35,7 +35,7 @@ class BaseProvider(ABC):
         pass
 
     @staticmethod
-    def output(result: Any, audio_path: Path) -> None:
+    def output(result: Any, output_path: Path) -> None:
         pass
 
     def _emit_event(
@@ -56,10 +56,13 @@ class BaseProvider(ABC):
     def _run_process(
         ctx: SpawnContext,
         name: str,
+        task: Task,
         target: Callable[..., None],
         on_event: OnEventCallback,
         args: Iterable[Any] = (),
     ) -> None:
+        task.raise_if_cancelled()
+
         event_queue = ctx.Queue()
         process = ctx.Process(
             target=target,
@@ -70,6 +73,7 @@ class BaseProvider(ABC):
         try:
             process.start()
             while process.is_alive():
+                task.raise_if_cancelled()
                 try:
                     event = event_queue.get(timeout=0.1)
                 except Empty:
@@ -78,6 +82,7 @@ class BaseProvider(ABC):
                 on_event(event)
 
             process.join()
+            task.raise_if_cancelled()
 
             while True:
                 try:
@@ -87,6 +92,7 @@ class BaseProvider(ABC):
 
                 on_event(event)
 
+            task.raise_if_cancelled()
             if process.exitcode != 0:
                 raise RuntimeError(
                     f"{name} exit failed，exitcode={process.exitcode}"
@@ -94,7 +100,10 @@ class BaseProvider(ABC):
         finally:
             if process.is_alive():
                 process.terminate()
-                process.join()
+                process.join(timeout=5)
+                if process.is_alive():
+                    process.kill()
+                    process.join()
 
             process.close()
             event_queue.close()
