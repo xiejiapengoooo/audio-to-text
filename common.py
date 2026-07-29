@@ -9,7 +9,7 @@ if TYPE_CHECKING:
 
 
 Model = Literal["whisperx"]
-OutputFileType = Literal["json", "txt"]
+OutputFileType = Literal["json", "txt", "srt"]
 
 
 type ProcessEvent = dict[str, Any]

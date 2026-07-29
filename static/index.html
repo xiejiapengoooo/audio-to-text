@@ -72,6 +72,7 @@
               <select class="select appearance-none w-full" id="outputFileType">
                 <option value="json">JSON — transcript with timeline data</option>
                 <option value="txt">TXT — plain transcript text</option>
+                <option value="srt">SRT — subtitles with timestamps</option>
               </select>
               <span class="text-xs leading-5 text-base-content/50">Choose the format generated for this transcription.</span>
             </label>
@@ -211,6 +212,7 @@
         const OUTPUT_FILE_TYPE_LABELS = {
           json: "JSON",
           txt: "TXT",
+          srt: "SRT",
         };
         const API = {
           session: "/session",

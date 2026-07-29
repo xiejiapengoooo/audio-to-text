@@ -13,4 +13,4 @@ pinned: false
 - [ ] Add support for video files.
 - [x] Add support for deleting files.
 - [x] Add support for discarding task.
-- [ ] Add support for exporting transcripts as TXT and SRT files.
+- [x] Add support for exporting transcripts as TXT and SRT files.

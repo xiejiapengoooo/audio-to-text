@@ -5,6 +5,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 import whisperx
+from whisperx.utils import WriteSRT
 
 from common import OutputFileType, ProcessEvent, get_output_file
 from config import Settings
@@ -86,7 +87,7 @@ class WhisperXProvider(BaseProvider):
             audio = whisperx.load_audio(waiting_file)
             self._emit_log_event(event_queue, "alignment audio loaded")
 
-            self._emit_log_event(event_queue, "align audio")
+            self._emit_log_event(event_queue, "Aligning timestamps · 0%")
             result = whisperx.align(
                 result["segments"],
                 model,
@@ -94,8 +95,12 @@ class WhisperXProvider(BaseProvider):
                 audio,
                 self._get_device(),
                 return_char_alignments=True,
+                progress_callback=lambda progress: self._emit_log_event(
+                    event_queue,
+                    f"Aligning timestamps · {progress:.0f}%",
+                ),
             )
-            self._emit_log_event(event_queue, "audio aligned")
+            self._emit_log_event(event_queue, "Timestamp alignment complete")
 
         result["language"] = language
 
@@ -178,6 +183,19 @@ class WhisperXProvider(BaseProvider):
 
             with output_path.open("w", encoding="utf-8") as file:
                 file.write("\n".join(lines))
+            return
+
+        if output_file_type == "srt":
+            with output_path.open("w", encoding="utf-8") as file:
+                WriteSRT(str(output_path.parent)).write_result(
+                    result,
+                    file,
+                    {
+                        "highlight_words": False,
+                        "max_line_count": None,
+                        "max_line_width": None,
+                    },
+                )
             return
 
         if output_file_type != "json":
