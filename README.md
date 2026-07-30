@@ -10,6 +10,8 @@ pinned: false
 
 A self-hosted web application that converts audio into timestamp-aligned transcripts using [WhisperX](https://github.com/m-bain/whisperX).
 
+![Audio to Text web interface](./screen_shot.png)
+
 ## Features
 
 - Supports AAC, FLAC, M4A, MP3, OGG, OPUS, and WAV audio files.
