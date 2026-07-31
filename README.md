@@ -10,6 +10,8 @@ pinned: false
 
 A self-hosted web application that converts audio into timestamp-aligned transcripts using [WhisperX](https://github.com/m-bain/whisperX).
 
+Demo: [Hugging Face Spaces](https://huggingface.co/spaces/xiejiapengoo/audio-to-text)
+
 ![Audio to Text web interface](./screen_shot.png)
 
 ## Features
